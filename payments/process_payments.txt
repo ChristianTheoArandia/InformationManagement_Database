@@ -1,0 +1,162 @@
+<?php
+require_once '../includes/database.php';
+
+$transaction_id = $_GET['transaction_id'] ?? '';
+$message = '';
+
+// Get payment types
+$paymentTypes = $conn->query("SELECT * FROM Payment_Type");
+$cardTypes = $conn->query("SELECT * FROM Card_Type");
+$walletTypes = $conn->query("SELECT * FROM Wallet_Type");
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $payment_id = generateId('P', 'Payment', 'payment_id');
+    $payment_type_id = $_POST['payment_type_id'];
+    $amount = $_POST['amount'];
+    
+    // Insert into Payment table
+    $sql = "INSERT INTO Payment (payment_id, transaction_id, payment_date, amount, payment_type_id) 
+            VALUES (?, ?, CURDATE(), ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssis", $payment_id, $transaction_id, $amount, $payment_type_id);
+    
+    if ($stmt->execute()) {
+        // Handle specific payment method
+        if ($payment_type_id == '001') { // Cash
+            $amount_received = $_POST['amount_received'];
+            $change_amount = $amount_received - $amount;
+            $conn->query("INSERT INTO Cash VALUES ('$payment_id', $amount_received, $change_amount)");
+            $message = "Cash payment recorded! Change: ₱$change_amount";
+        } 
+        elseif ($payment_type_id == '002') { // Card
+            $card_type_id = $_POST['card_type_id'];
+            $approval_code = $_POST['approval_code'];
+            $conn->query("INSERT INTO Card VALUES ('$payment_id', '$card_type_id', '$approval_code')");
+            $message = "Card payment recorded! Approval: $approval_code";
+        }
+        elseif ($payment_type_id == '003') { // Digital Wallet
+            $wallet_type_id = $_POST['wallet_type_id'];
+            $account_number = $_POST['account_number'];
+            $reference_no = $_POST['reference_no'];
+            $conn->query("INSERT INTO Digital_Wallet VALUES ('$payment_id', '$wallet_type_id', '$account_number', '$reference_no')");
+            $message = "Digital wallet payment recorded! Ref: $reference_no";
+        }
+    } else {
+        $message = "Error: " . $conn->error;
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Process Payment</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h4><i class="fas fa-credit-card"></i> Process Payment</h4>
+                    </div>
+                    <div class="card-body">
+                        <?php if($message): ?>
+                            <div class="alert alert-info"><?= $message ?></div>
+                        <?php endif; ?>
+                        
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label>Transaction ID</label>
+                                <input type="text" class="form-control" value="<?= $transaction_id ?>" readonly>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label>Payment Method</label>
+                                <select name="payment_type_id" id="paymentType" class="form-control" required>
+                                    <option value="">Select Payment Method</option>
+                                    <?php while($pt = $paymentTypes->fetch_assoc()): ?>
+                                        <option value="<?= $pt['payment_type_id'] ?>">
+                                            <?= $pt['type_name'] ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label>Amount (₱)</label>
+                                <input type="number" name="amount" class="form-control" required>
+                            </div>
+                            
+                            <!-- Cash Fields -->
+                            <div id="cashFields" style="display:none;">
+                                <div class="mb-3">
+                                    <label>Amount Received</label>
+                                    <input type="number" name="amount_received" class="form-control">
+                                </div>
+                            </div>
+                            
+                            <!-- Card Fields -->
+                            <div id="cardFields" style="display:none;">
+                                <div class="mb-3">
+                                    <label>Card Type</label>
+                                    <select name="card_type_id" class="form-control">
+                                        <?php while($ct = $cardTypes->fetch_assoc()): ?>
+                                            <option value="<?= $ct['card_type_id'] ?>"><?= $ct['type_name'] ?></option>
+                                        <?php endwhile; ?>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Approval Code</label>
+                                    <input type="text" name="approval_code" class="form-control">
+                                </div>
+                            </div>
+                            
+                            <!-- Digital Wallet Fields -->
+                            <div id="walletFields" style="display:none;">
+                                <div class="mb-3">
+                                    <label>Wallet Type</label>
+                                    <select name="wallet_type_id" class="form-control">
+                                        <?php while($wt = $walletTypes->fetch_assoc()): ?>
+                                            <option value="<?= $wt['wallet_type_id'] ?>"><?= $wt['type_name'] ?></option>
+                                        <?php endwhile; ?>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Account Number</label>
+                                    <input type="text" name="account_number" class="form-control">
+                                </div>
+                                <div class="mb-3">
+                                    <label>Reference Number</label>
+                                    <input type="text" name="reference_no" class="form-control">
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success w-100">Process Payment</button>
+                            <a href="../transactions/view.php?id=<?= $transaction_id ?>" class="btn btn-secondary w-100 mt-2">Back</a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('paymentType').addEventListener('change', function() {
+            document.getElementById('cashFields').style.display = 'none';
+            document.getElementById('cardFields').style.display = 'none';
+            document.getElementById('walletFields').style.display = 'none';
+            
+            if(this.value === '001') { // Cash
+                document.getElementById('cashFields').style.display = 'block';
+            } else if(this.value === '002') { // Card
+                document.getElementById('cardFields').style.display = 'block';
+            } else if(this.value === '003') { // Digital Wallet
+                document.getElementById('walletFields').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
