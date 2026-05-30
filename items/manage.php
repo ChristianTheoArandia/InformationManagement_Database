@@ -1,6 +1,19 @@
 <?php
 require_once '../includes/database.php';
 
+// Handle delete request
+if (isset($_GET['delete'])) {
+
+    $item_id = (int)$_GET['delete'];
+
+    $stmt = $conn->prepare("DELETE FROM Rental_Item WHERE item_id = ?");
+    $stmt->bind_param("i", $item_id);
+    $stmt->execute();
+
+    header("Location: manage.php");
+    exit();
+}
+
 $items = $conn->query("
     SELECT ri.*, it.type_name
     FROM Rental_Item ri
@@ -17,6 +30,7 @@ $items = $conn->query("
 
 <title>Inventory Management</title>
 
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
@@ -73,6 +87,7 @@ body{
 
 .btn-add:hover{
     opacity:.95;
+    color:white;
 }
 
 table{
@@ -116,12 +131,20 @@ tbody td{
     margin-right:8px;
 }
 
+.btn-edit:hover{
+    color:white;
+}
+
 .btn-delete{
     background:#ef4444;
     color:white;
     text-decoration:none;
     padding:8px 15px;
     border-radius:12px;
+}
+
+.btn-delete:hover{
+    color:white;
 }
 
 .btn-back{
@@ -132,6 +155,10 @@ tbody td{
     text-decoration:none;
     padding:16px 28px;
     border-radius:16px;
+}
+
+.btn-back:hover{
+    color:white;
 }
 
 .table-responsive{
@@ -182,20 +209,16 @@ tbody td{
 
                         <td><?= htmlspecialchars($item['item_name']) ?></td>
 
-                        <td><?= $item['type_name'] ?? 'Uncategorized' ?></td>
+                        <td><?= htmlspecialchars($item['type_name'] ?? 'Uncategorized') ?></td>
 
                         <td>
-                            ₱<?= number_format($item['individual_cost'],2) ?>
+                            ₱<?= number_format($item['individual_cost'], 2) ?>
                         </td>
 
                         <td>
-
                             <span class="stock-badge <?= $item['total_stock'] < 5 ? 'low-stock' : '' ?>">
-
                                 <?= $item['total_stock'] ?> units
-
                             </span>
-
                         </td>
 
                         <td>
@@ -204,12 +227,10 @@ tbody td{
                                 <i class="fas fa-edit"></i> Edit
                             </a>
 
-                            <a href="delete_item.php?id=<?= $item['item_id'] ?>"
+                            <a href="manage.php?delete=<?= $item['item_id'] ?>"
                                class="btn-delete"
-                               onclick="return confirm('Delete this item?')">
-
+                               onclick="return confirm('Delete this item?');">
                                 <i class="fas fa-trash"></i> Delete
-
                             </a>
 
                         </td>
