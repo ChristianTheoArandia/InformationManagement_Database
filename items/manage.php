@@ -2,7 +2,7 @@
 require_once '../includes/database.php';
 
 $items = $conn->query("
-    SELECT ri.*, it.type_name 
+    SELECT ri.*, it.type_name
     FROM Rental_Item ri
     LEFT JOIN Item_Type it ON ri.item_type_id = it.item_type_id
     ORDER BY ri.item_id
@@ -12,97 +12,226 @@ $items = $conn->query("
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Items - Table & Chair Rental</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * { font-family: 'Poppins', sans-serif; }
-        body { background: #f0f2f5; }
-        .page-card {
-            background: white;
-            border-radius: 20px;
-            padding: 25px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 10px;
-        }
-        .table thead th {
-            background: #f8f9fa;
-            font-weight: 600;
-        }
-        .stock-badge {
-            background: #e5e7eb;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        .low-stock {
-            background: #fee2e2;
-            color: #ef4444;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Inventory Management</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+body{
+    background:#f1f3f6;
+    padding:40px;
+}
+
+.container{
+    width:100%;
+}
+
+.page-card{
+    background:white;
+    border-radius:30px;
+    padding:45px;
+    box-shadow:0 8px 30px rgba(0,0,0,.05);
+}
+
+.page-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:35px;
+}
+
+.page-header h2{
+    font-size:2.2rem;
+    font-weight:700;
+    color:#1f2937;
+}
+
+.page-header i{
+    color:#667eea;
+    margin-right:10px;
+}
+
+.btn-add{
+    background:linear-gradient(135deg,#667eea,#764ba2);
+    color:white;
+    text-decoration:none;
+    padding:16px 28px;
+    border-radius:16px;
+    font-weight:600;
+}
+
+.btn-add:hover{
+    opacity:.95;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+thead th{
+    background:#f3f4f6;
+    padding:20px;
+    text-align:left;
+    color:#374151;
+    font-weight:600;
+}
+
+tbody td{
+    padding:22px 20px;
+    border-top:1px solid #e5e7eb;
+}
+
+.stock-badge{
+    background:#dcfce7;
+    color:#166534;
+    padding:8px 14px;
+    border-radius:20px;
+    font-size:14px;
+    font-weight:600;
+}
+
+.low-stock{
+    background:#fee2e2;
+    color:#dc2626;
+}
+
+.btn-edit{
+    background:#f59e0b;
+    color:white;
+    text-decoration:none;
+    padding:8px 15px;
+    border-radius:12px;
+    margin-right:8px;
+}
+
+.btn-delete{
+    background:#ef4444;
+    color:white;
+    text-decoration:none;
+    padding:8px 15px;
+    border-radius:12px;
+}
+
+.btn-back{
+    display:inline-block;
+    margin-top:35px;
+    background:#6b7280;
+    color:white;
+    text-decoration:none;
+    padding:16px 28px;
+    border-radius:16px;
+}
+
+.table-responsive{
+    overflow-x:auto;
+}
+</style>
 </head>
 <body>
-    <div class="container mt-4">
-        <div class="page-card">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3><i class="fas fa-boxes text-info"></i> Inventory Management</h3>
-                <a href="add_item.php" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Add New Item
-                </a>
-            </div>
-            
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Item ID</th>
-                            <th>Item Name</th>
-                            <th>Type</th>
-                            <th>Cost/Day</th>
-                            <th>Stock</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php while($item = $items->fetch_assoc()): ?>
-                        <tr>
-                            <td><?= $item['item_id'] ?></td>
-                            <td><?= htmlspecialchars($item['item_name']) ?></td>
-                            <td><?= $item['type_name'] ?? 'Uncategorized' ?></td>
-                            <td>₱<?= number_format($item['individual_cost'], 2) ?></td>
-                            <td>
-                                <span class="stock-badge <?= $item['total_stock'] < 5 ? 'low-stock' : '' ?>">
-                                    <?= $item['total_stock'] ?> units
-                                </span>
-                            </td>
-                            <td>
-                                <a href="edit_item.php?id=<?= $item['item_id'] ?>" class="btn btn-sm btn-warning">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <a href="delete_item.php?id=<?= $item['item_id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">
-                                    <i class="fas fa-trash"></i>
-                                </a>
-                            </td>
-                        </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="mt-3">
-                <a href="../index.php" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                </a>
-            </div>
+
+<div class="container">
+
+    <div class="page-card">
+
+        <div class="page-header">
+            <h2>
+                <i class="fas fa-boxes"></i>
+                Inventory Management
+            </h2>
+
+            <a href="add_item.php" class="btn-add">
+                <i class="fas fa-plus"></i>
+                Add Item
+            </a>
         </div>
+
+        <div class="table-responsive">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Item ID</th>
+                        <th>Item Name</th>
+                        <th>Type</th>
+                        <th>Cost / Day</th>
+                        <th>Stock</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                <?php while($item = $items->fetch_assoc()): ?>
+
+                    <tr>
+
+                        <td><?= $item['item_id'] ?></td>
+
+                        <td><?= htmlspecialchars($item['item_name']) ?></td>
+
+                        <td><?= $item['type_name'] ?? 'Uncategorized' ?></td>
+
+                        <td>
+                            ₱<?= number_format($item['individual_cost'],2) ?>
+                        </td>
+
+                        <td>
+
+                            <span class="stock-badge <?= $item['total_stock'] < 5 ? 'low-stock' : '' ?>">
+
+                                <?= $item['total_stock'] ?> units
+
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            <a href="edit_item.php?id=<?= $item['item_id'] ?>" class="btn-edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+
+                            <a href="delete_item.php?id=<?= $item['item_id'] ?>"
+                               class="btn-delete"
+                               onclick="return confirm('Delete this item?')">
+
+                                <i class="fas fa-trash"></i> Delete
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                <?php endwhile; ?>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <a href="../index.php" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+            Back to Dashboard
+        </a>
+
     </div>
+
+</div>
+
 </body>
 </html>
