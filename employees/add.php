@@ -1,6 +1,18 @@
 <?php
 require_once '../includes/database.php';
 
+function generateId($prefix, $table, $column) {
+    global $conn;
+    $result = $conn->query("SELECT $column FROM $table ORDER BY $column DESC LIMIT 1");
+    if ($result && $result->num_rows > 0) {
+        $lastId = $result->fetch_assoc()[$column];
+        $num = (int)substr($lastId, 1) + 1;
+    } else {
+        $num = 1;
+    }
+    return $prefix . str_pad($num, 3, '0', STR_PAD_LEFT);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $employee_id = generateId('E', 'Employee', 'employee_id');
     $first_name = $_POST['first_name'];
@@ -11,7 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->bind_param("sssi", $employee_id, $first_name, $last_name, $wage);
     
     if ($stmt->execute()) {
-        $success = "Employee added successfully! ID: $employee_id";
+        header("Location: list.php?success=Employee added successfully! ID: $employee_id");
+        exit();
     } else {
         $error = "Error: " . $conn->error;
     }
@@ -38,48 +51,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             max-width: 550px;
             margin: 0 auto;
         }
-        .form-label {
-            font-weight: 500;
-            color: #333;
-            margin-bottom: 8px;
-        }
-        .form-control {
-            border-radius: 10px;
-            border: 1px solid #e0e0e0;
-            padding: 12px 15px;
-        }
-        .btn-save {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 10px;
-            font-weight: 500;
-        }
-        .btn-cancel {
-            background: #6b7280;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 10px;
-            font-weight: 500;
-        }
+        .form-label { font-weight: 500; color: #333; margin-bottom: 8px; }
+        .form-control { border-radius: 10px; border: 1px solid #e0e0e0; padding: 12px 15px; }
+        .btn-save { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 12px 30px; border-radius: 10px; font-weight: 500; }
+        .btn-cancel { background: #6b7280; color: white; border: none; padding: 12px 30px; border-radius: 10px; font-weight: 500; }
     </style>
 </head>
 <body>
     <div class="container mt-5">
         <div class="form-card">
-            <h3 class="mb-4">
-                <i class="fas fa-user-tie text-success"></i> Add Employee
-            </h3>
-            
-            <?php if(isset($success)): ?>
-                <div class="alert alert-success"><?= $success ?></div>
-            <?php endif; ?>
+            <h3 class="mb-4"><i class="fas fa-user-tie text-success"></i> Add Employee</h3>
             <?php if(isset($error)): ?>
                 <div class="alert alert-danger"><?= $error ?></div>
             <?php endif; ?>
-            
             <form method="POST">
                 <div class="mb-3">
                     <label class="form-label">FIRST NAME</label>
@@ -91,15 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="mb-4">
                     <label class="form-label">DAILY WAGE (₱)</label>
-                    <input type="number" name="wage" class="form-control" placeholder="0.00" required>
+                    <input type="number" name="wage" class="form-control" placeholder="0.00" step="0.01" required>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn-save">
-                        <i class="fas fa-save"></i> Save Employee
-                    </button>
-                    <button type="button" class="btn-cancel" onclick="location.href='list.php'">
-                        <i class="fas fa-times"></i> Cancel
-                    </button>
+                    <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Employee</button>
+                    <button type="button" class="btn-cancel" onclick="location.href='list.php'"><i class="fas fa-times"></i> Cancel</button>
                 </div>
             </form>
         </div>
