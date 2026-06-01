@@ -270,7 +270,7 @@ foreach ($cart as $item_id => $qty) {
                     <h2 class="mb-1" style="font-weight: 700;"><i class="fas fa-shopping-cart text-primary"></i> New Rental Transaction</h2>
                     <p class="text-muted mb-0">Create a new rental order for your customer</p>
                 </div>
-                <a href="../index.php" class="btn btn-outline-secondary">
+                <a href="../index.php" style="background: #6b7280; color: white; padding: 10px 24px; border-radius: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
             </div>
