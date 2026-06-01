@@ -13,6 +13,7 @@ $result = $conn->query("SELECT * FROM Client ORDER BY client_id");
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../includes/sidebar.css">
     <style>
         * {
             font-family: 'Poppins', sans-serif;
@@ -20,13 +21,13 @@ $result = $conn->query("SELECT * FROM Client ORDER BY client_id");
         
         body {
             background: #f0f2f5;
-            padding: 30px;
+            margin:0;
         }
         
-        /* Main container card */
-        .client-container {
-            max-width: 1200px;
-            margin: 0 auto;
+        .main-content {
+            margin-left: 280px;
+            padding: 25px 30px;
+            min-height: 100vh;
         }
         
         .client-card {
@@ -180,7 +181,8 @@ $result = $conn->query("SELECT * FROM Client ORDER BY client_id");
     </style>
 </head>
 <body>
-    <div class="client-container">
+    <?php include '../includes/sidebar.php'; ?>
+    <div class="main-content">
         <div class="client-card">
             <!-- Header with Title and Add Button -->
             <div class="header-section">

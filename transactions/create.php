@@ -91,10 +91,15 @@ foreach ($cart as $item_id => $qty) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../includes/sidebar.css">
     <style>
         * { font-family: 'Poppins', sans-serif; }
-        body { background: #f0f2f5; padding: 20px; }
-        
+        body { background: #f0f2f5; margin: 0; }
+        .main-content {
+            margin-left: 280px;
+            padding: 25px 30px;
+            min-height: 100vh;
+        }
         .page-header {
             background: white;
             border-radius: 16px;
@@ -262,7 +267,8 @@ foreach ($cart as $item_id => $qty) {
     </style>
 </head>
 <body>
-    <div class="container-fluid">
+    <?php include '../includes/sidebar.php'; ?> 
+    <div class="main-content">
         <!-- Header -->
         <div class="page-header">
             <div class="d-flex justify-content-between align-items-center">

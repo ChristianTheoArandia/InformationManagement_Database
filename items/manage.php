@@ -33,7 +33,7 @@ $items = $conn->query("
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+<link rel="stylesheet" href="../includes/sidebar.css">
 <style>
 *{
     margin:0;
@@ -44,11 +44,13 @@ $items = $conn->query("
 
 body{
     background:#f1f3f6;
-    padding:40px;
+    margi:0;
 }
 
-.container{
-    width:100%;
+.main-content{
+    margin-left: 280px;
+    padding: 25px 30px;
+    min-height: 100vh;
 }
 
 .page-card{
@@ -167,8 +169,8 @@ tbody td{
 </style>
 </head>
 <body>
-
-<div class="container">
+<?php include '../includes/sidebar.php'; ?>
+<div class="main-content">
 
     <div class="page-card">
 

@@ -26,7 +26,9 @@ $recentTransactions = $conn->query("
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="includes/sidebar.css">
     <style>
+        
         * {
             margin: 0;
             padding: 0;
@@ -38,76 +40,6 @@ $recentTransactions = $conn->query("
             background: #f0f2f5;
         }
         
-        /* Sidebar */
-        .sidebar {
-            width: 280px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            position: fixed;
-            left: 0;
-            top: 0;
-            height: 100vh;
-            overflow-y: auto;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-        }
-        
-        .sidebar-header {
-            padding: 25px 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 20px;
-        }
-        
-        .sidebar-header h4 {
-            color: white;
-            font-size: 20px;
-            font-weight: 700;
-            margin-top: 10px;
-            line-height: 1.3;
-        }
-        
-        .sidebar-header i {
-            font-size: 40px;
-            color: white;
-        }
-        
-        .sidebar-menu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .sidebar-menu li {
-            margin: 5px 15px;
-        }
-        
-        .sidebar-menu li a {
-            display: flex;
-            align-items: center;
-            padding: 12px 20px;
-            color: rgba(255,255,255,0.85);
-            text-decoration: none;
-            border-radius: 12px;
-            transition: all 0.3s;
-            font-size: 15px;
-            font-weight: 500;
-        }
-        
-        .sidebar-menu li a:hover {
-            background: rgba(255,255,255,0.15);
-            color: white;
-            transform: translateX(5px);
-        }
-        
-        .sidebar-menu li.active a {
-            background: rgba(255,255,255,0.2);
-            color: white;
-        }
-        
-        .sidebar-menu li a i {
-            width: 28px;
-            margin-right: 12px;
-            font-size: 18px;
-        }
         
         /* Main Content */
         .main-content {
@@ -243,57 +175,7 @@ $recentTransactions = $conn->query("
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <i class="fas fa-chair"></i>
-            <h4>Table & Chair<br>Rental System</h4>
-        </div>
-        <ul class="sidebar-menu">
-            <li class="active">
-                <a href="index.php">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-            <li>
-                <a href="clients/list.php">
-                    <i class="fas fa-users"></i>
-                    <span>Clients</span>
-                </a>
-            </li>
-            <li>
-                <a href="employees/list.php">
-                    <i class="fas fa-user-tie"></i>
-                    <span>Employees</span>
-                </a>
-            </li>
-            <li>
-                <a href="items/manage.php">
-                    <i class="fas fa-boxes"></i>
-                    <span>Inventory</span>
-                </a>
-            </li>
-            <li>
-                <a href="transactions/create.php">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Transactions</span>
-                </a>
-            </li>
-            <li>
-                <a href="reports/monthly_revenue.php">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Reports</span>
-                </a>
-            </li>
-            <li>
-                <a href="repair_fees.php">
-                    <i class="fas fa-tools"></i>
-                    <span>Repair Fees</span>
-                </a>
-            </li>
-        </ul>
-    </div>
+    <?php include 'includes/sidebar.php'; ?>
 
     <!-- Main Content -->
     <div class="main-content">

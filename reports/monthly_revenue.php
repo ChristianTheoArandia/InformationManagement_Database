@@ -40,21 +40,19 @@ while($row = $result->fetch_assoc()) {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../includes/sidebar.css">
     <style>
         * {
             font-family: 'Poppins', sans-serif;
         }
         body {
             background: #f0f2f5;
-            padding: 30px;
+            margin: 0;
         }
-        .page-card {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-            max-width: 1200px;
-            margin: 0 auto;
+        .main-content {
+            margin-left: 280px;
+            padding: 25px 30px;
+            min-height: 100vh;
         }
         .header-section {
             display: flex;
@@ -163,7 +161,8 @@ while($row = $result->fetch_assoc()) {
     </style>
 </head>
 <body>
-    <div class="page-card">
+    <?php include '../includes/sidebar.php'; ?>
+    <div class="main-content">
         <div class="header-section">
             <h3>
                 <i class="fas fa-chart-line"></i> Monthly Revenue Report
