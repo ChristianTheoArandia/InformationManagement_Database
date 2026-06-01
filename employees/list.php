@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/database.php';
-$result = $conn->query("SELECT * FROM Employee ORDER BY employee_id DESC");
+
+$result = $conn->query("SELECT * FROM Employee ORDER BY employee_id");
 ?>
 
 <!DOCTYPE html>
@@ -14,52 +15,113 @@ $result = $conn->query("SELECT * FROM Employee ORDER BY employee_id DESC");
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Poppins', sans-serif; }
-        body { background: #f0f2f5; }
-        .table-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
-        .btn-add { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 500; }
-        .btn-edit { background: #3b82f6; color: white; border: none; padding: 5px 12px; border-radius: 8px; font-size: 12px; }
-        .btn-delete { background: #ef4444; color: white; border: none; padding: 5px 12px; border-radius: 8px; font-size: 12px; }
-        table th { background: #f8f9fa; font-weight: 600; }
+        body { background: #f0f2f5; padding: 30px; }
+        .page-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .header-section h3 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin: 0;
+        }
+        .btn-add {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+        }
+        .btn-edit {
+            background: #f59e0b;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 13px;
+            margin-right: 5px;
+        }
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 13px;
+        }
+        /* ADD THIS NEW STYLE */
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        .btn-secondary:hover {
+            background: #4b5563;
+            color: white;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8f9fa; padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+        td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        .alert { padding: 12px; border-radius: 12px; margin-bottom: 20px; }
+        .alert-success { background: #d1fae5; color: #065f46; }
     </style>
 </head>
 <body>
-    <div class="container mt-4">
-        <div class="table-card">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3><i class="fas fa-user-tie text-success"></i> Employee List</h3>
-                <a href="add.php" class="btn-add"><i class="fas fa-plus"></i> Add Employee</a>
-            </div>
-            
-            <?php if (isset($_GET['success'])): ?>
-                <div class="alert alert-success"><?= htmlspecialchars($_GET['success']) ?></div>
-            <?php endif; ?>
-            <?php if (isset($_GET['error'])): ?>
-                <div class="alert alert-danger"><?= htmlspecialchars($_GET['error']) ?></div>
-            <?php endif; ?>
-            
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr><th>Employee ID</th><th>First Name</th><th>Last Name</th><th>Daily Wage (₱)</th><th>Actions</th</tr>
-                    </thead>
-                    <tbody>
-                        <?php while ($row = $result->fetch_assoc()): ?>
-                        <tr>
-                            <td><strong><?= $row['employee_id'] ?></strong></td>
-                            <td><?= htmlspecialchars($row['first_name']) ?></td>
-                            <td><?= htmlspecialchars($row['last_name']) ?></td>
-                            <td>₱ <?= number_format($row['wage'], 2) ?></td>
-                            <td>
-                                <a href="edit.php?id=<?= $row['employee_id'] ?>" class="btn-edit"><i class="fas fa-edit"></i> Edit</a>
-                                <a href="delete.php?id=<?= $row['employee_id'] ?>" class="btn-delete" onclick="return confirm('Delete this employee?')"><i class="fas fa-trash"></i> Delete</a>
-                            </td>
-                        </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
-            </div>
+    <div class="page-card">
+        <div class="header-section">
+            <h3><i class="fas fa-user-tie"></i> Employee List</h3>
+            <a href="add.php" class="btn-add"><i class="fas fa-plus"></i> Add Employee</a>
         </div>
+        
+        <?php if(isset($_GET['success'])): ?>
+            <div class="alert alert-success"><?= htmlspecialchars($_GET['success']) ?></div>
+        <?php endif; ?>
+        
+        <table>
+            <thead>
+                <tr><th>Employee ID</th><th>First Name</th><th>Last Name</th><th>Daily Wage</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                <?php while($row = $result->fetch_assoc()): ?>
+                <tr>
+                    <td><?= $row['employee_id'] ?></td>
+                    <td><?= htmlspecialchars($row['first_name']) ?></td>
+                    <td><?= htmlspecialchars($row['last_name']) ?></td>
+                    <td>₱<?= number_format($row['wage'], 2) ?></td>
+                    <td>
+                        <a href="edit.php?id=<?= $row['employee_id'] ?>" class="btn-edit"><i class="fas fa-edit"></i> Edit</a>
+                        <a href="list.php?delete=<?= $row['employee_id'] ?>" class="btn-delete" onclick="return confirm('Delete this employee?')"><i class="fas fa-trash"></i> Delete</a>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+        
+        <!-- ADD THIS BACK BUTTON -->
+        <div>
+            <a href="../index.php" class="btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        <!-- END OF ADDED BUTTON -->
+        
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

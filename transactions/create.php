@@ -8,6 +8,39 @@ $items = $conn->query("SELECT * FROM Rental_Item WHERE total_stock > 0");
 
 $cart = $_SESSION['cart'] ?? [];
 
+// Handle Add Client from this page
+$showAddClientForm = isset($_GET['add_client']);
+$clientSuccess = '';
+$clientError = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_add_client'])) {
+    $result = $conn->query("SELECT MAX(client_id) as max_id FROM Client");
+    $row = $result->fetch_assoc();
+    $lastId = $row['max_id'];
+    if ($lastId) {
+        $num = intval(substr($lastId, 1)) + 1;
+        $client_id = 'C' . str_pad($num, 5, '0', STR_PAD_LEFT);
+    } else {
+        $client_id = 'C00001';
+    }
+    
+    $first_name = $_POST['first_name'];
+    $last_name = $_POST['last_name'];
+    $contact = $_POST['contact'];
+    $location = $_POST['location'];
+    
+    $stmt = $conn->prepare("INSERT INTO Client (client_id, first_name, last_name, contact, location) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssss", $client_id, $first_name, $last_name, $contact, $location);
+    
+    if ($stmt->execute()) {
+        $clientSuccess = "Client added successfully! ID: $client_id";
+        // Refresh clients list
+        $clients = $conn->query("SELECT * FROM Client ORDER BY client_id");
+    } else {
+        $clientError = "Error: " . $conn->error;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_to_cart'])) {
         $item_id = $_POST['item_id'];
@@ -127,6 +160,44 @@ foreach ($cart as $item_id => $qty) {
             width: 100%;
         }
         
+        .btn-add-client {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-weight: 500;
+            font-size: 13px;
+            white-space: nowrap;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-add-client:hover {
+            transform: translateY(-2px);
+            color: white;
+        }
+        
+        .client-select-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .client-select-group .form-select {
+            flex: 1;
+        }
+        
+        .quick-add-card {
+            background: #fef3c7;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #f59e0b;
+        }
+        
         .cart-item {
             background: #f8f9fa;
             border-radius: 12px;
@@ -172,6 +243,22 @@ foreach ($cart as $item_id => $qty) {
         .btn-remove:hover {
             background: #dc2626;
         }
+        
+        .alert {
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .grid-2col .form-control {
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -197,29 +284,72 @@ foreach ($cart as $item_id => $qty) {
                         <i class="fas fa-file-alt text-primary"></i> Transaction Details
                     </h5>
                     
+                    <!-- Quick Add Client Form -->
+                    <?php if($showAddClientForm): ?>
+                        <div class="quick-add-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <strong><i class="fas fa-user-plus"></i> Add New Client</strong>
+                                <a href="create.php" style="background: #6b7280; color: white; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; text-decoration: none;">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                            </div>
+                            <form method="POST">
+                                <div class="grid-2col">
+                                    <input type="text" name="first_name" class="form-control" placeholder="First Name" required>
+                                    <input type="text" name="last_name" class="form-control" placeholder="Last Name" required>
+                                    <input type="text" name="contact" class="form-control" placeholder="Contact Number" required>
+                                    <input type="text" name="location" class="form-control" placeholder="Location">
+                                </div>
+                                <button type="submit" name="quick_add_client" class="btn btn-primary w-100" style="padding: 10px;">
+                                    <i class="fas fa-save"></i> Save Client
+                                </button>
+                            </form>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <!-- Success/Error Messages -->
+                    <?php if($clientSuccess): ?>
+                        <div class="alert alert-success"><?= $clientSuccess ?></div>
+                    <?php endif; ?>
+                    <?php if($clientError): ?>
+                        <div class="alert alert-danger"><?= $clientError ?></div>
+                    <?php endif; ?>
+                    
+                    <!-- Main Transaction Form -->
                     <form method="POST" id="transactionForm">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">
-                                    <i class="fas fa-user"></i> CLIENT
-                                </label>
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-user"></i> CLIENT
+                            </label>
+                            <div class="client-select-group">
                                 <select name="client_id" class="form-select" required>
                                     <option value="">Select Client</option>
-                                    <?php while($c = $clients->fetch_assoc()): ?>
+                                    <?php 
+                                    $clients = $conn->query("SELECT * FROM Client ORDER BY client_id");
+                                    while($c = $clients->fetch_assoc()): 
+                                    ?>
                                         <option value="<?= $c['client_id'] ?>">
                                             <?= $c['first_name'] . ' ' . $c['last_name'] ?> (<?= $c['client_id'] ?>)
                                         </option>
                                     <?php endwhile; ?>
                                 </select>
+                                <a href="?add_client=1" class="btn-add-client">
+                                    <i class="fas fa-plus"></i> New Client
+                                </a>
                             </div>
-                            
+                        </div>
+                        
+                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">
                                     <i class="fas fa-user-tie"></i> EMPLOYEE (HANDLED BY)
                                 </label>
                                 <select name="employee_id" class="form-select" required>
                                     <option value="">Select Employee</option>
-                                    <?php while($e = $employees->fetch_assoc()): ?>
+                                    <?php 
+                                    $employees = $conn->query("SELECT * FROM Employee ORDER BY employee_id");
+                                    while($e = $employees->fetch_assoc()): 
+                                    ?>
                                         <option value="<?= $e['employee_id'] ?>">
                                             <?= $e['first_name'] . ' ' . $e['last_name'] ?>
                                         </option>
@@ -247,7 +377,7 @@ foreach ($cart as $item_id => $qty) {
                                 <i class="fas fa-plus-circle text-success"></i> Add Items to Cart
                             </h5>
                             <div class="row">
-                                <div class="col-md-7">
+                                <div class="col-md-7 mb-2">
                                     <select id="itemSelect" class="form-select">
                                         <option value="">Select Item</option>
                                         <?php 
@@ -260,10 +390,10 @@ foreach ($cart as $item_id => $qty) {
                                         <?php endwhile; ?>
                                     </select>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-3 mb-2">
                                     <input type="number" id="quantity" class="form-control" placeholder="Qty" value="1" min="1">
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-2 mb-2">
                                     <button type="button" class="btn btn-primary w-100" onclick="addToCart()">
                                         <i class="fas fa-cart-plus"></i> Add
                                     </button>
