@@ -40,15 +40,12 @@ $recentTransactions = $conn->query("
             background: #f0f2f5;
         }
         
-        
-        /* Main Content */
         .main-content {
             margin-left: 280px;
             padding: 25px 30px;
             min-height: 100vh;
         }
         
-        /* Stat Cards */
         .stat-card {
             background: white;
             border-radius: 16px;
