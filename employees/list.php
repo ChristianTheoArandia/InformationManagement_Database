@@ -15,37 +15,71 @@ $result = $conn->query("SELECT * FROM Employee ORDER BY employee_id");
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../includes/sidebar.css">
     <style>
-        * { 
-            font-family: 'Poppins', sans-serif; 
+        * {
+            font-family: 'Poppins', sans-serif;
         }
-        body { 
-            background: #f0f2f5; 
-            margin: 0;
+        
+        body {
+            background: #f0f2f5;
+            margin:0;
         }
+        
         .main-content {
             margin-left: 280px;
             padding: 25px 30px;
             min-height: 100vh;
         }
+        
+        .employee-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+        
+        /* Header section */
         .header-section {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
         }
+        
         .header-section h3 {
             font-size: 24px;
             font-weight: 700;
             color: #333;
             margin: 0;
         }
+        
+        .header-section h3 i {
+            color: #667eea;
+            margin-right: 10px;
+        }
+        
+        /* Buttons */
         .btn-add {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 10px 24px;
             border-radius: 12px;
             text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
         }
+        
+        .btn-add:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102,126,234,0.3);
+            color: white;
+        }
+        
         .btn-edit {
             background: #f59e0b;
             color: white;
@@ -53,8 +87,17 @@ $result = $conn->query("SELECT * FROM Employee ORDER BY employee_id");
             border-radius: 8px;
             text-decoration: none;
             font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
             margin-right: 5px;
         }
+        
+        .btn-edit:hover {
+            background: #d97706;
+            color: white;
+        }
+        
         .btn-delete {
             background: #ef4444;
             color: white;
@@ -62,9 +105,17 @@ $result = $conn->query("SELECT * FROM Employee ORDER BY employee_id");
             border-radius: 8px;
             text-decoration: none;
             font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
-        /* ADD THIS NEW STYLE */
-        .btn-secondary {
+        
+        .btn-delete:hover {
+            background: #dc2626;
+            color: white;
+        }
+        
+        .btn-back {
             background: #6b7280;
             color: white;
             padding: 10px 24px;
@@ -74,58 +125,143 @@ $result = $conn->query("SELECT * FROM Employee ORDER BY employee_id");
             align-items: center;
             gap: 8px;
             margin-top: 20px;
+            transition: all 0.3s;
+            border: none;
         }
-        .btn-secondary:hover {
+        
+        .btn-back:hover {
             background: #4b5563;
             color: white;
+            transform: translateX(-3px);
         }
-        table { width: 100%; border-collapse: collapse; }
-        th { background: #f8f9fa; padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
-        td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
-        .alert { padding: 12px; border-radius: 12px; margin-bottom: 20px; }
-        .alert-success { background: #d1fae5; color: #065f46; }
+        
+        /* Table styles */
+        .employee-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        .employee-table th {
+            background: #f8f9fa;
+            padding: 14px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            color: #555;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .employee-table td {
+            padding: 14px;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: middle;
+        }
+        
+        .alert {
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .alert-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: #9ca3af;
+        }
+        
+        .empty-state i {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
     <?php include '../includes/sidebar.php'; ?>
     <div class="main-content">
-        <div class="header-section">
-            <h3><i class="fas fa-user-tie"></i> Employee List</h3>
-            <a href="add.php" class="btn-add"><i class="fas fa-plus"></i> Add Employee</a>
+        <div class="employee-card">
+            <!-- Header with Title and Add Button -->
+            <div class="header-section">
+                <h3>
+                    <i class="fas fa-user-tie"></i> Employee List
+                </h3>
+                <a href="add.php" class="btn-add">
+                    <i class="fas fa-plus"></i> Add Employee
+                </a>
+            </div>
+            
+            <!-- Success/Error Messages -->
+            <?php if(isset($_GET['success'])): ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> <?= htmlspecialchars($_GET['success']) ?>
+                </div>
+            <?php endif; ?>
+            
+            <?php if(isset($_GET['error'])): ?>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> <?= htmlspecialchars($_GET['error']) ?>
+                </div>
+            <?php endif; ?>
+            
+            <!-- Employee Table -->
+            <?php if($result && $result->num_rows > 0): ?>
+                <table class="employee-table">
+                    <thead>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>First Name</th>
+                            <th>Last Name</th>
+                            <th>Daily Wage</th>
+                            <th width="140">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while($row = $result->fetch_assoc()): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($row['employee_id']) ?></td>
+                            <td><?= htmlspecialchars($row['first_name']) ?></td>
+                            <td><?= htmlspecialchars($row['last_name']) ?></td>
+                            <td>₱<?= number_format($row['wage'], 2) ?></td>
+                            <td>
+                                <a href="edit.php?id=<?= $row['employee_id'] ?>" class="btn-edit">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <a href="delete.php?id=<?= $row['employee_id'] ?>" class="btn-delete" 
+                                   onclick="return confirm('Delete <?= addslashes($row['first_name']) ?> <?= addslashes($row['last_name']) ?>?')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
+                <div class="empty-state">
+                    <i class="fas fa-user-slash"></i>
+                    <p>No employees found</p>
+                    <a href="add.php" class="btn-add" style="display: inline-flex; margin-top: 15px;">
+                        <i class="fas fa-plus"></i> Add Your First Employee
+                    </a>
+                </div>
+            <?php endif; ?>
+            
+            <div style="margin-top: 20px;">
+                <a href="../index.php" class="btn-back">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+            
         </div>
-        
-        <?php if(isset($_GET['success'])): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($_GET['success']) ?></div>
-        <?php endif; ?>
-        
-        <table>
-            <thead>
-                <tr><th>Employee ID</th><th>First Name</th><th>Last Name</th><th>Daily Wage</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-                <?php while($row = $result->fetch_assoc()): ?>
-                <tr>
-                    <td><?= $row['employee_id'] ?></td>
-                    <td><?= htmlspecialchars($row['first_name']) ?></td>
-                    <td><?= htmlspecialchars($row['last_name']) ?></td>
-                    <td>₱<?= number_format($row['wage'], 2) ?></td>
-                    <td>
-                        <a href="edit.php?id=<?= $row['employee_id'] ?>" class="btn-edit"><i class="fas fa-edit"></i> Edit</a>
-                        <a href="list.php?delete=<?= $row['employee_id'] ?>" class="btn-delete" onclick="return confirm('Delete this employee?')"><i class="fas fa-trash"></i> Delete</a>
-                    </td>
-                </tr>
-                <?php endwhile; ?>
-            </tbody>
-        </table>
-        
-        <!-- ADD THIS BACK BUTTON -->
-        <div>
-            <a href="../index.php" class="btn-secondary">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </a>
-        </div>
-        <!-- END OF ADDED BUTTON -->
-        
     </div>
 </body>
 </html>
