@@ -1,8 +1,6 @@
 <?php
 require_once '../includes/database.php';
 
-$itemTypes = $conn->query("SELECT * FROM Item_Type");
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $item_id = generateId('I', 'Rental_Item', 'item_id');
     $item_name = $_POST['item_name'];
@@ -189,9 +187,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label class="form-label">TYPE</label>
                     <select name="item_type_id" class="form-select" required>
                         <option value="">Select Type</option>
-                        <?php while($type = $itemTypes->fetch_assoc()): ?>
-                            <option value="<?= $type['item_type_id'] ?>"><?= $type['type_name'] ?></option>
-                        <?php endwhile; ?>
+                        <option value="001">Chair</option>
+                        <option value="002">Table</option>
                     </select>
                 </div>
                 
@@ -220,7 +217,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <i class="fas fa-arrow-left"></i> Back to Inventory
                 </a>
             </div>
-            <!-- ============================================= -->
             
         </div>
     </div>

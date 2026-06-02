@@ -1,9 +1,6 @@
 <?php
 require_once '../includes/database.php';
 
-// Get item types for dropdown
-$itemTypes = $conn->query("SELECT * FROM Item_Type");
-
 // Get item ID from URL
 $item_id = $_GET['id'] ?? '';
 
@@ -180,11 +177,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label class="form-label">TYPE</label>
                     <select name="item_type_id" class="form-select" required>
                         <option value="">Select Type</option>
-                        <?php while($type = $itemTypes->fetch_assoc()): ?>
-                            <option value="<?= $type['item_type_id'] ?>" <?= $type['item_type_id'] == $item['item_type_id'] ? 'selected' : '' ?>>
-                                <?= $type['type_name'] ?>
-                            </option>
-                        <?php endwhile; ?>
+                        <option value="001" <?= $item['item_type_id'] == '001' ? 'selected' : '' ?>>Chair</option>
+                        <option value="002" <?= $item['item_type_id'] == '002' ? 'selected' : '' ?>>Table</option>
                     </select>
                 </div>
                 
