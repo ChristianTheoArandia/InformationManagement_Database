@@ -19,6 +19,7 @@ $transactions = $conn->query("
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../includes/sidebar.css">
     <style>
         * {
             font-family: 'Poppins', sans-serif;
@@ -26,16 +27,20 @@ $transactions = $conn->query("
         
         body {
             background: #f0f2f5;
-            padding: 30px;
+            margin: 0;
         }
         
-        .page-card {
+        .main-content {
+            margin-left: 280px;
+            padding: 25px 30px;
+            min-height: 100vh;
+        }
+        
+        .transaction-card {
             background: white;
             border-radius: 20px;
             padding: 30px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-            max-width: 1200px;
-            margin: 0 auto;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
         }
         
         .header-section {
@@ -159,6 +164,16 @@ $transactions = $conn->query("
             margin-bottom: 20px;
         }
         
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .alert-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
         .empty-state {
             text-align: center;
             padding: 50px;
@@ -176,75 +191,79 @@ $transactions = $conn->query("
     </style>
 </head>
 <body>
-    <div class="page-card">
-        <div class="header-section">
-            <h3>
-                <i class="fas fa-list"></i> All Transactions
-            </h3>
-            <a href="create.php" class="btn-primary">
-                <i class="fas fa-plus"></i> New Transaction
-            </a>
-        </div>
-        
-        <?php if(isset($_GET['success'])): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($_GET['success']) ?></div>
-        <?php endif; ?>
-        
-        <?php if(isset($_GET['error'])): ?>
-            <div class="alert alert-danger"><?= htmlspecialchars($_GET['error']) ?></div>
-        <?php endif; ?>
-        
-        <?php if($transactions && $transactions->num_rows > 0): ?>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Transaction ID</th>
-                            <th>Client</th>
-                            <th>Start Date</th>
-                            <th>Return Date</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php while($row = $transactions->fetch_assoc()): ?>
-                        <tr>
-                            <td><?= htmlspecialchars($row['transaction_id']) ?></td>
-                            <td><?= htmlspecialchars($row['client_name']) ?></td>
-                            <td><?= $row['start_date'] ?></td>
-                            <td><?= $row['return_date'] ?></td>
-                            <td>
-                                <?php if($row['return_date'] < date('Y-m-d')): ?>
-                                    <span class="badge-completed">Completed</span>
-                                <?php else: ?>
-                                    <span class="badge-active">Active</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <a href="view.php?id=<?= $row['transaction_id'] ?>" class="btn-view">
-                                    <i class="fas fa-eye"></i> View
-                                </a>
-                            </td>
-                        </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php else: ?>
-            <div class="empty-state">
-                <i class="fas fa-receipt"></i>
-                <p>No transactions found</p>
-                <a href="create.php" class="btn-primary" style="display: inline-flex; margin-top: 15px;">
-                    <i class="fas fa-plus"></i> Create Your First Transaction
+    <?php include '../includes/sidebar.php'; ?>
+    
+    <div class="main-content">
+        <div class="transaction-card">
+            <div class="header-section">
+                <h3>
+                    <i class="fas fa-list"></i> All Transactions
+                </h3>
+                <a href="create.php" class="btn-primary">
+                    <i class="fas fa-plus"></i> New Transaction
                 </a>
             </div>
-        <?php endif; ?>
-        
-        <div>
-            <a href="../index.php" class="btn-secondary">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </a>
+            
+            <?php if(isset($_GET['success'])): ?>
+                <div class="alert alert-success"><?= htmlspecialchars($_GET['success']) ?></div>
+            <?php endif; ?>
+            
+            <?php if(isset($_GET['error'])): ?>
+                <div class="alert alert-danger"><?= htmlspecialchars($_GET['error']) ?></div>
+            <?php endif; ?>
+            
+            <?php if($transactions && $transactions->num_rows > 0): ?>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Transaction ID</th>
+                                <th>Client</th>
+                                <th>Start Date</th>
+                                <th>Return Date</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while($row = $transactions->fetch_assoc()): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($row['transaction_id']) ?></td>
+                                <td><?= htmlspecialchars($row['client_name']) ?></td>
+                                <td><?= $row['start_date'] ?></td>
+                                <td><?= $row['return_date'] ?></td>
+                                <td>
+                                    <?php if($row['return_date'] < date('Y-m-d')): ?>
+                                        <span class="badge-completed">Completed</span>
+                                    <?php else: ?>
+                                        <span class="badge-active">Active</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <a href="view.php?id=<?= $row['transaction_id'] ?>" class="btn-view">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="empty-state">
+                    <i class="fas fa-receipt"></i>
+                    <p>No transactions found</p>
+                    <a href="create.php" class="btn-primary" style="display: inline-flex; margin-top: 15px;">
+                        <i class="fas fa-plus"></i> Create Your First Transaction
+                    </a>
+                </div>
+            <?php endif; ?>
+            
+            <div>
+                <a href="../index.php" class="btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
         </div>
     </div>
 </body>

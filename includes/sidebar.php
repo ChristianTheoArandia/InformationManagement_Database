@@ -34,7 +34,7 @@ $current_folder = basename(dirname($_SERVER['PHP_SELF']));
                 </a>
             </li>
             <li class="<?= $current_folder == 'transactions' ? 'active' : '' ?>">
-                <a href="/InformationManagement_Database/transactions/create.php">
+                <a href="/InformationManagement_Database/transactions/list.php">
                     <i class="fas fa-shopping-cart"></i>
                     <span>Transactions</span>
                 </a>
