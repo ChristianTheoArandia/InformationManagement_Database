@@ -39,16 +39,16 @@ $current_folder = basename(dirname($_SERVER['PHP_SELF']));
                 <span>Transactions</span>
             </a>
         </li>
-        <li class="<?= $current_folder == 'reports' ? 'active' : '' ?>">
-            <a href="/InformationManagement_Database/reports/monthly_revenue.php">
-                <i class="fas fa-chart-line"></i>
-                <span>Reports</span>
-            </a>
-        </li>
         <li class="<?= $current_folder == 'repairs' ? 'active' : '' ?>">
             <a href="/InformationManagement_Database/repairs/list.php">
                 <i class="fas fa-tools"></i>
                 <span>Repair Fees</span>
+            </a>
+        </li>
+        <li class="<?= $current_folder == 'reports' ? 'active' : '' ?>">
+            <a href="/InformationManagement_Database/reports/monthly_revenue.php">
+                <i class="fas fa-chart-line"></i>
+                <span>Reports</span>
             </a>
         </li>
     </ul>
