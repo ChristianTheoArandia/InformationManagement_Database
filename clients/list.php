@@ -115,9 +115,6 @@ $result = $conn->query("SELECT * FROM Client ORDER BY client_id");
             color: white;
         }
         
-        /* ======================================== */
-        /* EDIT THIS BUTTON STYLES BELOW IF NEEDED */
-        /* ======================================== */
         .btn-back {
             background: #6b7280;
             color: white;
@@ -137,7 +134,6 @@ $result = $conn->query("SELECT * FROM Client ORDER BY client_id");
             color: white;
             transform: translateX(-3px);
         }
-        /* ======================================== */
         
         /* Table styles */
         .client-table {

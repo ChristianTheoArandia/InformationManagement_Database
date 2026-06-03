@@ -3,7 +3,6 @@ require_once '../includes/database.php';
 
 $year = $_GET['year'] ?? date('Y');
 
-// Only allow years from 2026 to current year
 $currentYear = date('Y');
 if ($year < 2026) {
     $year = 2026;

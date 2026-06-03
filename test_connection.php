@@ -145,9 +145,6 @@ foreach ($tables as $table) {
     }
 }
 
-// =============================================
-// AUTO-FIX MISSING COLUMNS
-// =============================================
 echo "<h3>Checking for missing columns...</h3>";
 
 // Add quantity column to Repair_Fee
