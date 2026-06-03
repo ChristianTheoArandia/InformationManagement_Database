@@ -65,6 +65,19 @@ $tables = [
         wallet_type_id CHAR(3) PRIMARY KEY,
         type_name VARCHAR(20)
     )",
+
+    "CREATE TABLE IF NOT EXISTS Wallet (
+        payment_id CHAR(6) PRIMARY KEY,
+        wallet_type_id CHAR(3),
+        account_number CHAR(15),
+        transaction_reference_no CHAR(20)
+    )",
+
+    "CREATE TABLE IF NOT EXISTS Cash (
+        payment_id CHAR(6) PRIMARY KEY,
+        amount_received INTEGER,
+        change_amount INTEGER
+    )",
     
     "CREATE TABLE IF NOT EXISTS Payment_Type (
         payment_type_id CHAR(3) PRIMARY KEY,
