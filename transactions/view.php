@@ -119,6 +119,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['report_damage'])) {
         .alert { border-radius: 12px; margin-bottom: 20px; }
         .alert-success { background: #d1fae5; color: #065f46; }
         .alert-danger { background: #fee2e2; color: #991b1b; }
+        .rental-days-badge {
+            background: #eef2ff;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #667eea;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
     </style>
 </head>
 <body>
@@ -142,6 +153,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['report_damage'])) {
             <div class="info-row"><div class="info-label">Transaction Date:</div><div class="info-value"><?= $transaction['transaction_date'] ?></div></div>
             <div class="info-row"><div class="info-label">Start Date:</div><div class="info-value"><?= $transaction['start_date'] ?></div></div>
             <div class="info-row"><div class="info-label">Return Date:</div><div class="info-value"><?= $transaction['return_date'] ?></div></div>
+            <div class="info-row">
+                <div class="info-label">Rental Duration:</div>
+                <div class="info-value">
+                    <span class="rental-days-badge">
+                        <i class="fas fa-calendar-week"></i> <?= $transaction['rental_duration'] ?> day(s)
+                    </span>
+                </div>
+            </div>
             <div class="info-row"><div class="info-label">Payment Status:</div>
                 <div class="info-value"><?php if($isPaid): ?><span class="status-badge status-paid">PAID</span><?php else: ?><span class="status-badge status-not-paid">NOT PAID</span><?php endif; ?></div>
             </div>
@@ -152,32 +171,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['report_damage'])) {
     
     <h5 class="section-title"><i class="fas fa-boxes"></i> Rented Items</h5>
     
+    <?php if($transaction['rental_duration'] > 0): ?>
+        <div class="alert alert-info" style="background: #e0f2fe; color: #0369a1; margin-bottom: 20px;">
+            <i class="fas fa-info-circle"></i> 
+            <strong>Note:</strong> Each item cost is multiplied by <?= $transaction['rental_duration'] ?> day(s) of rental period
+        </div>
+    <?php endif; ?>
+    
     <div class="table-responsive">
         <table class="table table-bordered">
-            <thead><tr><th>Item</th><th>Quantity</th><th>Daily Rate</th><th>Subtotal</th><th>Actions</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Daily Rate</th>
+                    <th>Rental Days</th>
+                    <th>Subtotal</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
             <tbody>
                 <?php 
                 $total = 0;
+                $rental_duration = $transaction['rental_duration'] ?? 1;
+                
                 while($item = $items->fetch_assoc()): 
-                    $subtotal = $item['quantity'] * $item['individual_cost'];
+                    // Calculate subtotal: quantity × daily_rate × rental_duration
+                    $subtotal = $item['quantity'] * $item['individual_cost'] * $rental_duration;
                     $total += $subtotal;
                 ?>
                 <tr>
-                    <td><?= $item['item_name'] ?></td>
+                    <td><?= htmlspecialchars($item['item_name']) ?></td>
                     <td><?= $item['quantity'] ?></td>
                     <td>₱<?= number_format($item['individual_cost'], 2) ?></td>
-                    <td>₱<?= number_format($subtotal, 2) ?></td>
+                    <td><?= $rental_duration ?> day(s)</td>
+                    <td class="fw-bold text-primary">₱<?= number_format($subtotal, 2) ?></td>
                     <td>
-                        <button type="button" class="btn-damage" onclick="openDamageModal('<?= $item['item_id'] ?>', '<?= $item['item_name'] ?>')">
+                        <button type="button" class="btn-damage" onclick="openDamageModal('<?= $item['item_id'] ?>', '<?= htmlspecialchars($item['item_name']) ?>')">
                             <i class="fas fa-tools"></i> Report Damage
                         </button>
                     </td>
                 </tr>
                 <?php endwhile; ?>
                 <tr class="table-dark">
-                    <td colspan="3"><strong>Total</strong></td>
-                    <td><strong class="total-amount">₱<?= number_format($total, 2) ?></strong></td>
-                    <td></span>
+                    <td colspan="4"><strong>Grand Total</strong></td>
+                    <td colspan="2"><strong class="total-amount">₱<?= number_format($total, 2) ?></strong></td>
                 </tr>
             </tbody>
         </table>
@@ -185,11 +223,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['report_damage'])) {
     
     <div class="mt-4 d-flex gap-3">
         <?php if($isPaid): ?>
-            <button class="btn-payment" disabled>Transaction Paid</button>
+            <button class="btn-payment" disabled style="opacity: 0.6; cursor: not-allowed;">Transaction Paid</button>
         <?php else: ?>
-            <a href="../payments/process_payment.php?transaction_id=<?= $transaction_id ?>" class="btn-payment">Process Payment</a>
+            <a href="../payments/process_payment.php?transaction_id=<?= $transaction_id ?>" class="btn-payment">
+                <i class="fas fa-credit-card"></i> Process Payment (₱<?= number_format($total, 2) ?>)
+            </a>
         <?php endif; ?>
-        <a href="list.php" class="btn-back">Back to List</a>
+        <a href="list.php" class="btn-back"><i class="fas fa-arrow-left"></i> Back to List</a>
     </div>
 </div>
 
@@ -209,12 +249,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['report_damage'])) {
             <div style="margin-bottom: 15px;">
                 <label style="display: block; font-weight: 500; margin-bottom: 5px;">Damaged Quantity</label>
                 <input type="number" name="damage_quantity" id="damageQuantity" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;" min="1" required>
-                <small>How many units were damaged?</small>
+                <small class="text-muted">How many units were damaged?</small>
             </div>
             <div style="margin-bottom: 15px;">
                 <label style="display: block; font-weight: 500; margin-bottom: 5px;">Total Repair Cost (₱)</label>
                 <input type="number" name="repair_cost" id="repairCost" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;" step="0.01" required>
-                <small>Total cost for all damaged units</small>
+                <small class="text-muted">Total cost for all damaged units</small>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button type="button" onclick="closeDamageModal()" style="background: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;">Cancel</button>
@@ -235,6 +275,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['report_damage'])) {
     
     function closeDamageModal() {
         document.getElementById('damageModal').style.display = 'none';
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        let modal = document.getElementById('damageModal');
+        if (event.target === modal) {
+            closeDamageModal();
+        }
     }
 </script>
 </body>

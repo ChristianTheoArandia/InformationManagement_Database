@@ -10,81 +10,139 @@ if (!$transaction_id) {
     exit();
 }
 
-// Get transaction details
+// Get transaction details with rental duration
 $transaction = $conn->query("
-    SELECT t.*, SUM(ti.quantity * ri.individual_cost) as total_amount
+    SELECT t.*, t.rental_duration
     FROM TransactionTbl t
-    JOIN Transaction_Item ti ON t.transaction_id = ti.transaction_id
-    JOIN Rental_Item ri ON ti.item_id = ri.item_id
     WHERE t.transaction_id = '$transaction_id'
-    GROUP BY t.transaction_id
 ")->fetch_assoc();
 
-$totalAmount = $transaction['total_amount'] ?? 0;
+if (!$transaction) {
+    header("Location: ../transactions/list.php?error=Transaction not found");
+    exit();
+}
+
+// Calculate total amount correctly with rental duration
+$items = $conn->query("
+    SELECT ti.quantity, ri.individual_cost
+    FROM Transaction_Item ti
+    JOIN Rental_Item ri ON ti.item_id = ri.item_id
+    WHERE ti.transaction_id = '$transaction_id'
+");
+
+$totalAmount = 0;
+$rental_duration = $transaction['rental_duration'] ?? 1;
+
+while($item = $items->fetch_assoc()) {
+    // Calculate: quantity × daily_rate × rental_duration
+    $totalAmount += $item['quantity'] * $item['individual_cost'] * $rental_duration;
+}
 
 // Get payment types
 $paymentTypes = $conn->query("SELECT * FROM Payment_Type WHERE payment_type_id IN ('001', '003')");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
+    error_log("Payment submission started for transaction: " . $transaction_id);
+    
     $payment_id = 'P' . str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT);
     $payment_type_id = $_POST['payment_type_id'];
     $amount = $totalAmount;
     $error = false;
+    
+    error_log("Payment ID: " . $payment_id . ", Type: " . $payment_type_id . ", Amount: " . $amount);
     
     if ($payment_type_id == '003') {
         $wallet_type_id = $_POST['wallet_type_id'];
         $account_number = $_POST['account_number'];
         $reference_no = $_POST['reference_no'];
         
+        error_log("Wallet payment - Type: " . $wallet_type_id . ", Account: " . $account_number . ", Ref: " . $reference_no);
+        
         if (!preg_match('/^\d{11}$/', $account_number)) {
             $message = "Account number must be exactly 11 digits!";
             $messageType = "danger";
             $error = true;
+            error_log("Account number validation failed");
         }
         elseif ($wallet_type_id == '001' && !preg_match('/^\d{13}$/', $reference_no)) {
             $message = "GCash reference number must be exactly 13 digits!";
             $messageType = "danger";
             $error = true;
+            error_log("GCash reference validation failed");
         }
         elseif ($wallet_type_id == '002' && !preg_match('/^\d{12}$/', $reference_no)) {
             $message = "PayMaya reference number must be exactly 12 digits!";
             $messageType = "danger";
             $error = true;
+            error_log("PayMaya reference validation failed");
         }
     }
     
     if ($payment_type_id == '001') {
         $amount_received = $_POST['amount_received'];
+        error_log("Cash payment - Amount received: " . $amount_received);
+        
         if ($amount_received < $amount) {
             $message = "Amount received must be at least ₱" . number_format($amount, 2);
             $messageType = "danger";
             $error = true;
+            error_log("Amount received validation failed");
         }
     }
     
     if (!$error) {
+        error_log("Attempting to insert payment record");
+        
         $sql = "INSERT INTO Payment (payment_id, transaction_id, payment_date, amount, payment_type_id) 
                 VALUES (?, ?, CURDATE(), ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssis", $payment_id, $transaction_id, $amount, $payment_type_id);
         
-        if ($stmt->execute()) {
-            if ($payment_type_id == '001') {
-                $change_amount = $amount_received - $amount;
-                $conn->query("INSERT INTO Cash (payment_id, amount_received, change_amount) VALUES ('$payment_id', $amount_received, $change_amount)");
-            }
-            elseif ($payment_type_id == '003') {
-                $conn->query("INSERT INTO Wallet (payment_id, wallet_type_id, account_number, transaction_reference_no) VALUES ('$payment_id', '$wallet_type_id', '$account_number', '$reference_no')");
-            }
-            
-            // Update payment status
-            $conn->query("UPDATE TransactionTbl SET payment_status = 'PAID' WHERE transaction_id = '$transaction_id'");
-            
-            header("Location: ../transactions/list.php?success=Payment recorded! Amount: ₱" . number_format($amount, 2));
-            exit();
-        } else {
-            $message = "Database Error: " . $conn->error;
+        if (!$stmt) {
+            error_log("Prepare failed: " . $conn->error);
+            $message = "Database error: " . $conn->error;
             $messageType = "danger";
+            $error = true;
+        } else {
+            $stmt->bind_param("ssis", $payment_id, $transaction_id, $amount, $payment_type_id);
+            
+            if ($stmt->execute()) {
+                error_log("Payment record inserted successfully");
+                
+                if ($payment_type_id == '001') {
+                    $change_amount = $amount_received - $amount;
+                    $cash_sql = "INSERT INTO Cash (payment_id, amount_received, change_amount) VALUES ('$payment_id', $amount_received, $change_amount)";
+                    if ($conn->query($cash_sql)) {
+                        error_log("Cash record inserted");
+                    } else {
+                        error_log("Cash insert failed: " . $conn->error);
+                    }
+                }
+                elseif ($payment_type_id == '003') {
+                    $wallet_sql = "INSERT INTO Wallet (payment_id, wallet_type_id, account_number, transaction_reference_no) 
+                                  VALUES ('$payment_id', '$wallet_type_id', '$account_number', '$reference_no')";
+                    if ($conn->query($wallet_sql)) {
+                        error_log("Wallet record inserted");
+                    } else {
+                        error_log("Wallet insert failed: " . $conn->error);
+                    }
+                }
+                
+                // Update payment status
+                $update_sql = "UPDATE TransactionTbl SET payment_status = 'PAID' WHERE transaction_id = '$transaction_id'";
+                if ($conn->query($update_sql)) {
+                    error_log("Transaction status updated to PAID");
+                } else {
+                    error_log("Status update failed: " . $conn->error);
+                }
+                
+                header("Location: ../transactions/list.php?success=Payment recorded! Amount: ₱" . number_format($amount, 2));
+                exit();
+            } else {
+                error_log("Execute failed: " . $stmt->error);
+                $message = "Database Error: " . $stmt->error;
+                $messageType = "danger";
+            }
+            $stmt->close();
         }
     }
 }
@@ -96,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Process Payment - Table & Chair Rental</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -166,6 +224,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
         .total-amount { font-size: 24px; font-weight: 700; color: #10b981; }
         .button-group { display: flex; flex-direction: column; gap: 10px; margin-top: 25px; }
         .mb-3-custom { margin-bottom: 20px; }
+        .duration-badge {
+            background: #eef2ff;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #667eea;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .calculation-detail {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #e5e7eb;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #555;
+        }
+        .info-value {
+            color: #333;
+        }
+        .error-border {
+            border-color: #ef4444 !important;
+        }
+        .error-message {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -174,21 +278,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
             <h3><i class="fas fa-credit-card"></i> Process Payment</h3>
             
             <?php if($message): ?>
-                <div class="alert alert-<?= $messageType ?>"><?= $message ?></div>
+                <div class="alert alert-<?= $messageType ?> alert-dismissible fade show" role="alert">
+                    <?= $message ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
             <?php endif; ?>
             
             <div class="info-box">
-                <div class="d-flex justify-content-between mb-2">
-                    <strong>Transaction ID:</strong>
-                    <span><?= htmlspecialchars($transaction_id) ?></span>
+                <div class="info-row">
+                    <span class="info-label">Transaction ID:</span>
+                    <span class="info-value"><?= htmlspecialchars($transaction_id) ?></span>
                 </div>
-                <div class="d-flex justify-content-between">
-                    <strong>Total Amount Due:</strong>
+                <div class="info-row">
+                    <span class="info-label">Start Date:</span>
+                    <span class="info-value"><?= date('M d, Y', strtotime($transaction['start_date'])) ?></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Return Date:</span>
+                    <span class="info-value"><?= date('M d, Y', strtotime($transaction['return_date'])) ?></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Rental Duration:</span>
+                    <span class="info-value">
+                        <span class="duration-badge">
+                            <i class="fas fa-calendar-week"></i> <?= $rental_duration ?> day(s)
+                        </span>
+                    </span>
+                </div>
+                <div class="info-row mt-2">
+                    <span class="info-label"><strong>Total Amount Due:</strong></span>
                     <span class="total-amount">₱<?= number_format($totalAmount, 2) ?></span>
                 </div>
+                <?php if($rental_duration > 0): ?>
+                    <div class="calculation-detail">
+                        <i class="fas fa-calculator"></i> Calculated as: (Quantity × Daily Rate) × <?= $rental_duration ?> days
+                    </div>
+                <?php endif; ?>
             </div>
             
-            <form method="POST" id="paymentForm">
+            <form method="POST" id="paymentForm" novalidate>
+                <input type="hidden" name="submit_payment" value="1">
+                
                 <div class="mb-3-custom">
                     <label class="form-label">PAYMENT METHOD</label>
                     <select name="payment_type_id" id="paymentType" class="form-select" required>
@@ -203,8 +333,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
                 <div id="cashFields" style="display:none;">
                     <div class="mb-3-custom">
                         <label class="form-label">AMOUNT RECEIVED</label>
-                        <input type="number" name="amount_received" id="amountReceived" class="form-control" step="0.01" required>
+                        <input type="number" name="amount_received" id="amountReceived" class="form-control" step="0.01">
                         <small class="text-muted">Enter amount received from customer</small>
+                        <div id="changeDisplay" style="margin-top: 8px; font-size: 13px; font-weight: 500;"></div>
                     </div>
                 </div>
                 
@@ -212,27 +343,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
                 <div id="walletFields" style="display:none;">
                     <div class="mb-3-custom">
                         <label class="form-label">WALLET TYPE</label>
-                        <select name="wallet_type_id" id="walletType" class="form-select" required>
+                        <select name="wallet_type_id" id="walletType" class="form-select">
                             <option value="">Select Wallet</option>
                             <option value="001">GCash</option>
                             <option value="002">PayMaya</option>
                         </select>
+                        <span class="error-message" id="walletTypeError"></span>
                     </div>
                     <div class="mb-3-custom">
                         <label class="form-label">ACCOUNT NUMBER</label>
-                        <input type="text" name="account_number" id="accountNumber" class="form-control" placeholder="Enter 11-digit account number" maxlength="11" required>
+                        <input type="text" name="account_number" id="accountNumber" class="form-control" placeholder="Enter 11-digit account number" maxlength="11">
                         <small class="text-muted">Must be exactly 11 digits</small>
+                        <span class="error-message" id="accountNumberError"></span>
                     </div>
                     <div class="mb-3-custom">
                         <label class="form-label">REFERENCE NUMBER</label>
-                        <input type="text" name="reference_no" id="referenceNo" class="form-control" placeholder="Enter reference number" required>
+                        <input type="text" name="reference_no" id="referenceNo" class="form-control" placeholder="Enter reference number">
                         <small class="text-muted" id="refHint">GCash: 13 digits | PayMaya: 12 digits</small>
+                        <span class="error-message" id="referenceNoError"></span>
                     </div>
                 </div>
                 
                 <div class="button-group">
-                    <button type="submit" name="submit_payment" class="btn-payment">
-                        <i class="fas fa-check-circle"></i> Process Payment
+                    <button type="button" onclick="validateAndSubmit()" class="btn-payment">
+                        <i class="fas fa-check-circle"></i> Process Payment (₱<?= number_format($totalAmount, 2) ?>)
                     </button>
                     <a href="../transactions/list.php" class="btn-back">
                         <i class="fas fa-arrow-left"></i> Back to Transactions
@@ -242,10 +376,125 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
         </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const totalAmount = <?= $totalAmount ?>;
+        const rentalDuration = <?= $rental_duration ?>;
+        
+        function validateAndSubmit() {
+            console.log("validateAndSubmit called");
+            
+            // Clear all previous errors
+            clearErrors();
+            
+            let isValid = true;
+            const paymentType = document.getElementById('paymentType').value;
+            
+            console.log("Payment type selected:", paymentType);
+            
+            // Validate payment method
+            if (!paymentType) {
+                showError('paymentType', 'Please select a payment method');
+                isValid = false;
+                console.log("Payment method validation failed");
+            }
+            
+            // Validate based on payment type
+            if (paymentType === '001') {
+                // Cash validation
+                const amountReceived = document.getElementById('amountReceived').value;
+                console.log("Amount received:", amountReceived);
+                
+                if (!amountReceived || parseFloat(amountReceived) < totalAmount) {
+                    showError('amountReceived', `Amount received must be at least ₱${totalAmount.toFixed(2)}`);
+                    isValid = false;
+                    console.log("Amount validation failed");
+                }
+            } 
+            else if (paymentType === '003') {
+                // Wallet validation
+                const walletType = document.getElementById('walletType').value;
+                console.log("Wallet type:", walletType);
+                
+                if (!walletType) {
+                    showError('walletType', 'Please select a wallet type');
+                    isValid = false;
+                    console.log("Wallet type validation failed");
+                }
+                
+                const accountNumber = document.getElementById('accountNumber').value;
+                console.log("Account number:", accountNumber);
+                
+                if (!accountNumber || !/^\d{11}$/.test(accountNumber)) {
+                    showError('accountNumber', 'Account number must be exactly 11 digits');
+                    isValid = false;
+                    console.log("Account number validation failed");
+                }
+                
+                const referenceNo = document.getElementById('referenceNo').value;
+                console.log("Reference number:", referenceNo);
+                
+                if (walletType === '001') {
+                    if (!referenceNo || !/^\d{13}$/.test(referenceNo)) {
+                        showError('referenceNo', 'GCash reference number must be exactly 13 digits');
+                        isValid = false;
+                        console.log("GCash reference validation failed");
+                    }
+                } else if (walletType === '002') {
+                    if (!referenceNo || !/^\d{12}$/.test(referenceNo)) {
+                        showError('referenceNo', 'PayMaya reference number must be exactly 12 digits');
+                        isValid = false;
+                        console.log("PayMaya reference validation failed");
+                    }
+                }
+            }
+            
+            console.log("Validation result:", isValid);
+            
+            // If valid, submit the form
+            if (isValid) {
+                console.log("Submitting form");
+                document.getElementById('paymentForm').submit();
+            } else {
+                console.log("Form validation failed");
+                // Scroll to the first error
+                const firstError = document.querySelector('.error-border');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+        
+        function showError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.classList.add('error-border');
+                const errorSpan = document.getElementById(fieldId + 'Error');
+                if (errorSpan) {
+                    errorSpan.textContent = message;
+                }
+            }
+        }
+        
+        function clearErrors() {
+            // Remove error borders
+            const errorFields = document.querySelectorAll('.error-border');
+            errorFields.forEach(field => {
+                field.classList.remove('error-border');
+            });
+            
+            // Clear error messages
+            const errorMessages = document.querySelectorAll('.error-message');
+            errorMessages.forEach(msg => {
+                msg.textContent = '';
+            });
+        }
+        
         document.getElementById('paymentType').addEventListener('change', function() {
+            console.log("Payment type changed to:", this.value);
             document.getElementById('cashFields').style.display = 'none';
             document.getElementById('walletFields').style.display = 'none';
+            clearErrors();
             
             if(this.value === '001') {
                 document.getElementById('cashFields').style.display = 'block';
@@ -254,24 +503,108 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
             }
         });
         
-        document.getElementById('walletType')?.addEventListener('change', function() {
-            const refHint = document.getElementById('refHint');
-            const refInput = document.getElementById('referenceNo');
-            
-            if (this.value === '001') {
-                refHint.innerHTML = 'GCash: Must be exactly 13 digits';
-                refInput.maxLength = 13;
-                refInput.placeholder = 'Enter 13-digit reference number';
-            } else if (this.value === '002') {
-                refHint.innerHTML = 'PayMaya: Must be exactly 12 digits';
-                refInput.maxLength = 12;
-                refInput.placeholder = 'Enter 12-digit reference number';
-            } else {
-                refHint.innerHTML = 'GCash: 13 digits | PayMaya: 12 digits';
-                refInput.maxLength = '';
-                refInput.placeholder = 'Enter reference number';
-            }
+        // Calculate and display change for cash payments
+        const amountReceivedInput = document.getElementById('amountReceived');
+        if (amountReceivedInput) {
+            amountReceivedInput.addEventListener('input', function() {
+                const amountReceived = parseFloat(this.value);
+                const changeDisplay = document.getElementById('changeDisplay');
+                
+                if (!isNaN(amountReceived) && amountReceived >= totalAmount) {
+                    const change = amountReceived - totalAmount;
+                    changeDisplay.innerHTML = `<i class="fas fa-calculator"></i> Change: ₱${change.toFixed(2)}`;
+                    changeDisplay.style.color = '#10b981';
+                    // Clear error if amount is now sufficient
+                    const errorSpan = document.getElementById('amountReceivedError');
+                    if (errorSpan) errorSpan.textContent = '';
+                    this.classList.remove('error-border');
+                } else if (!isNaN(amountReceived) && amountReceived < totalAmount) {
+                    const remaining = totalAmount - amountReceived;
+                    changeDisplay.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Remaining: ₱${remaining.toFixed(2)}`;
+                    changeDisplay.style.color = '#ef4444';
+                } else {
+                    changeDisplay.innerHTML = '';
+                }
+            });
+        }
+        
+        const walletTypeSelect = document.getElementById('walletType');
+        if (walletTypeSelect) {
+            walletTypeSelect.addEventListener('change', function() {
+                const refHint = document.getElementById('refHint');
+                const refInput = document.getElementById('referenceNo');
+                
+                // Clear previous errors
+                const errorSpan = document.getElementById('referenceNoError');
+                if (errorSpan) errorSpan.textContent = '';
+                if (refInput) refInput.classList.remove('error-border');
+                
+                if (this.value === '001') {
+                    refHint.innerHTML = 'GCash: Must be exactly 13 digits';
+                    refInput.maxLength = 13;
+                    refInput.placeholder = 'Enter 13-digit reference number';
+                } else if (this.value === '002') {
+                    refHint.innerHTML = 'PayMaya: Must be exactly 12 digits';
+                    refInput.maxLength = 12;
+                    refInput.placeholder = 'Enter 12-digit reference number';
+                } else {
+                    refHint.innerHTML = 'GCash: 13 digits | PayMaya: 12 digits';
+                    refInput.maxLength = '';
+                    refInput.placeholder = 'Enter reference number';
+                }
+            });
+        }
+        
+        // Add real-time validation for account number
+        const accountNumberInput = document.getElementById('accountNumber');
+        if (accountNumberInput) {
+            accountNumberInput.addEventListener('input', function() {
+                this.value = this.value.replace(/\D/g, '').slice(0, 11);
+                const errorSpan = document.getElementById('accountNumberError');
+                if (errorSpan && this.value.length === 11) {
+                    errorSpan.textContent = '';
+                    this.classList.remove('error-border');
+                }
+            });
+        }
+        
+        // Add real-time validation for reference number
+        const referenceNoInput = document.getElementById('referenceNo');
+        if (referenceNoInput) {
+            referenceNoInput.addEventListener('input', function() {
+                const walletType = document.getElementById('walletType')?.value;
+                const errorSpan = document.getElementById('referenceNoError');
+                
+                if (walletType === '001') {
+                    this.value = this.value.replace(/\D/g, '').slice(0, 13);
+                    if (errorSpan && this.value.length === 13) {
+                        errorSpan.textContent = '';
+                        this.classList.remove('error-border');
+                    }
+                } else if (walletType === '002') {
+                    this.value = this.value.replace(/\D/g, '').slice(0, 12);
+                    if (errorSpan && this.value.length === 12) {
+                        errorSpan.textContent = '';
+                        this.classList.remove('error-border');
+                    }
+                }
+            });
+        }
+        
+        // Remove error border on focus
+        const inputs = document.querySelectorAll('.form-control, .form-select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                this.classList.remove('error-border');
+                const errorSpan = document.getElementById(this.id + 'Error');
+                if (errorSpan) errorSpan.textContent = '';
+            });
         });
+        
+        // Debug: Log when page loads
+        console.log("Payment page loaded");
+        console.log("Total amount:", totalAmount);
+        console.log("Rental duration:", rentalDuration);
     </script>
 </body>
 </html>

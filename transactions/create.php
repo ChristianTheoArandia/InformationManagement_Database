@@ -48,8 +48,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $start_date = $_POST['start_date'];
         $return_date = $_POST['return_date'];
         
-        $stmt = $conn->prepare("INSERT INTO TransactionTbl (transaction_id, client_id, employee_id, transaction_date, start_date, return_date, payment_status) VALUES (?, ?, ?, CURDATE(), ?, ?, 'NOT PAID')");
-        $stmt->bind_param("sssss", $transaction_id, $client_id, $employee_id, $start_date, $return_date);
+        // Calculate rental duration (number of days)
+        $start = new DateTime($start_date);
+        $end = new DateTime($return_date);
+        $interval = $start->diff($end);
+        $rental_duration = $interval->days;
+        // If start and end are the same, it's 1 day
+        if ($rental_duration == 0) {
+            $rental_duration = 1;
+        }
+        
+        $stmt = $conn->prepare("INSERT INTO TransactionTbl (transaction_id, client_id, employee_id, transaction_date, start_date, return_date, rental_duration, payment_status) VALUES (?, ?, ?, CURDATE(), ?, ?, ?, 'NOT PAID')");
+        $stmt->bind_param("sssssi", $transaction_id, $client_id, $employee_id, $start_date, $return_date, $rental_duration);
         
         if ($stmt->execute()) {
             foreach ($cart as $item_id => $quantity) {

@@ -103,6 +103,7 @@ $tables = [
         FOREIGN KEY (client_id) REFERENCES Client(client_id),
         FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
     )",
+    "ALTER TABLE TransactionTbl ADD COLUMN rental_duration VARCHAR(255)",
     
     "CREATE TABLE IF NOT EXISTS Payment (
         payment_id CHAR(6) PRIMARY KEY,
@@ -122,6 +123,7 @@ $tables = [
         FOREIGN KEY (transaction_id) REFERENCES TransactionTbl(transaction_id),
         FOREIGN KEY (item_id) REFERENCES Rental_Item(item_id)
     )",
+
     
     "CREATE TABLE IF NOT EXISTS Repair_Fee (
         repair_fee_id CHAR(6) PRIMARY KEY,
