@@ -226,7 +226,7 @@ $recentTransactions = $conn->query("
         <!-- Recent Transactions -->
         <div class="card-custom">
             <div class="card-header">
-                <i class="fas fa-clock me-2"></i> Recent Transactions
+                <i class="fas fa-clock me-2"></i> Today's Active Transaction
             </div>
             <div class="table-responsive">
                 <table class="table mb-0">
