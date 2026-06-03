@@ -16,7 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'client_id' => $_POST['client_id'] ?? '',
             'employee_id' => $_POST['employee_id'] ?? '',
             'start_date' => $_POST['start_date'] ?? '',
-            'return_date' => $_POST['return_date'] ?? ''
+            'return_date' => $_POST['return_date'] ?? '',
+            'venue' => $_POST['venue'] ?? ''
         ];
         
         $item_id = $_POST['item_id'];
@@ -31,7 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'client_id' => $_POST['client_id'] ?? '',
             'employee_id' => $_POST['employee_id'] ?? '',
             'start_date' => $_POST['start_date'] ?? '',
-            'return_date' => $_POST['return_date'] ?? ''
+            'return_date' => $_POST['return_date'] ?? '',
+            'venue' => $_POST['venue'] ?? ''
         ];
         
         $item_id = $_POST['remove_item'];
@@ -47,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $employee_id = $_POST['employee_id'];
         $start_date = $_POST['start_date'];
         $return_date = $_POST['return_date'];
+        $venue = $_POST['venue'];
         
         // Calculate rental duration (number of days)
         $start = new DateTime($start_date);
@@ -58,8 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $rental_duration = 1;
         }
         
-        $stmt = $conn->prepare("INSERT INTO TransactionTbl (transaction_id, client_id, employee_id, transaction_date, start_date, return_date, rental_duration, payment_status) VALUES (?, ?, ?, CURDATE(), ?, ?, ?, 'NOT PAID')");
-        $stmt->bind_param("sssssi", $transaction_id, $client_id, $employee_id, $start_date, $return_date, $rental_duration);
+        $stmt = $conn->prepare("INSERT INTO TransactionTbl (transaction_id, client_id, employee_id, transaction_date, start_date, return_date, rental_duration, venue, payment_status) VALUES (?, ?, ?, CURDATE(), ?, ?, ?, ?, 'NOT PAID')");
+        $stmt->bind_param("sssssis", $transaction_id, $client_id, $employee_id, $start_date, $return_date, $rental_duration, $venue);
         
         if ($stmt->execute()) {
             foreach ($cart as $item_id => $quantity) {
@@ -78,7 +81,8 @@ $form_data = $_SESSION['form_data'] ?? [
     'client_id' => '',
     'employee_id' => '',
     'start_date' => '',
-    'return_date' => ''
+    'return_date' => '',
+    'venue' => ''
 ];
 
 // Calculate rental interval (number of days)
@@ -495,6 +499,13 @@ foreach ($cart as $item_id => $qty) {
                                 </label>
                                 <input type="date" name="return_date" class="form-control" required value="<?= $form_data['return_date'] ?>" id="return_date">
                             </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-location-dot"></i> VENUE
+                                </label>
+                                <input type="text" name="venue" class="form-control" value="<?= htmlspecialchars($form_data['venue']) ?>" placeholder="Zone, Barangay, City" required>
+                            </div>
                         </div>
                         
                         <div class="mt-4">
@@ -652,6 +663,7 @@ foreach ($cart as $item_id => $qty) {
             let employeeId = document.querySelector('select[name="employee_id"]').value;
             let startDate = document.querySelector('input[name="start_date"]').value;
             let returnDate = document.querySelector('input[name="return_date"]').value;
+            let venue = document.querySelector('input[name="venue"]').value;
             
             if(!startDate || !returnDate) {
                 alert('Please select both start date and return date first');
@@ -668,6 +680,7 @@ foreach ($cart as $item_id => $qty) {
                 <input type="hidden" name="employee_id" value="${employeeId}">
                 <input type="hidden" name="start_date" value="${startDate}">
                 <input type="hidden" name="return_date" value="${returnDate}">
+                <input type="hidden" name="venue" value="${venue}">
             `;
             document.body.appendChild(form);
             form.submit();
@@ -679,6 +692,7 @@ foreach ($cart as $item_id => $qty) {
             let employeeId = document.querySelector('select[name="employee_id"]').value;
             let startDate = document.querySelector('input[name="start_date"]').value;
             let returnDate = document.querySelector('input[name="return_date"]').value;
+            let venue = document.querySelector('input[name="venue"]').value;
             
             let form = document.createElement('form');
             form.method = 'POST';
@@ -688,6 +702,7 @@ foreach ($cart as $item_id => $qty) {
                 <input type="hidden" name="employee_id" value="${employeeId}">
                 <input type="hidden" name="start_date" value="${startDate}">
                 <input type="hidden" name="return_date" value="${returnDate}">
+                <input type="hidden" name="venue" value="${venue}">
             `;
             document.body.appendChild(form);
             form.submit();
