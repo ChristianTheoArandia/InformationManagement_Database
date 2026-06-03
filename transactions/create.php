@@ -71,6 +71,19 @@ $form_data = $_SESSION['form_data'] ?? [
     'return_date' => ''
 ];
 
+// Calculate rental interval (number of days)
+$rental_days = 0;
+if (!empty($form_data['start_date']) && !empty($form_data['return_date'])) {
+    $start = new DateTime($form_data['start_date']);
+    $end = new DateTime($form_data['return_date']);
+    $interval = $start->diff($end);
+    $rental_days = $interval->days;
+    // Add 1 day if start and end are the same (same day rental)
+    if ($rental_days == 0) {
+        $rental_days = 1;
+    }
+}
+
 // Handle Add Client from this page
 $showAddClientForm = isset($_GET['add_client']);
 $clientSuccess = '';
@@ -119,14 +132,15 @@ function generate_Id($prefix, $table, $column) {
     return $prefix . '00001';
 }
 
-// Calculate total
+// Calculate total with rental days
 $total = 0;
 $cartItems = [];
 foreach ($cart as $item_id => $qty) {
     $item = $conn->query("SELECT * FROM Rental_Item WHERE item_id = '$item_id'")->fetch_assoc();
     if ($item) {
         $cartItems[] = ['item' => $item, 'qty' => $qty];
-        $total += $item['individual_cost'] * $qty;
+        // Calculate: cost_per_day × quantity × number_of_rental_days
+        $total += $item['individual_cost'] * $qty * $rental_days;
     }
 }
 ?>
@@ -281,6 +295,18 @@ foreach ($cart as $item_id => $qty) {
             color: #667eea;
         }
         
+        .rental-days-badge {
+            background: #eef2ff;
+            padding: 8px 15px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #667eea;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
         .section-title {
             font-size: 18px;
             font-weight: 600;
@@ -324,6 +350,19 @@ foreach ($cart as $item_id => $qty) {
         
         .grid-2col .form-control {
             margin: 0;
+        }
+        
+        .info-box {
+            background: #f0fdf4;
+            border-radius: 12px;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #10b981;
+        }
+        
+        .info-box i {
+            color: #10b981;
+            margin-right: 8px;
         }
     </style>
 </head>
@@ -382,6 +421,15 @@ foreach ($cart as $item_id => $qty) {
                         <div class="alert alert-danger"><?= $clientError ?></div>
                     <?php endif; ?>
                     
+                    <!-- Rental Days Info -->
+                    <?php if($rental_days > 0): ?>
+                        <div class="info-box">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Rental Period:</strong> <?= $rental_days ?> day(s) 
+                            (from <?= date('M d, Y', strtotime($form_data['start_date'])) ?> to <?= date('M d, Y', strtotime($form_data['return_date'])) ?>)
+                        </div>
+                    <?php endif; ?>
+                    
                     <!-- Main Transaction Form -->
                     <form method="POST" id="transactionForm">
                         <div class="mb-3">
@@ -428,14 +476,14 @@ foreach ($cart as $item_id => $qty) {
                                 <label class="form-label">
                                     <i class="fas fa-calendar-alt"></i> RENTAL START DATE
                                 </label>
-                                <input type="date" name="start_date" class="form-control" required value="<?= $form_data['start_date'] ?>">
+                                <input type="date" name="start_date" class="form-control" required value="<?= $form_data['start_date'] ?>" id="start_date">
                             </div>
                             
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">
                                     <i class="fas fa-calendar-check"></i> RETURN DATE
                                 </label>
-                                <input type="date" name="return_date" class="form-control" required value="<?= $form_data['return_date'] ?>">
+                                <input type="date" name="return_date" class="form-control" required value="<?= $form_data['return_date'] ?>" id="return_date">
                             </div>
                         </div>
                         
@@ -478,6 +526,13 @@ foreach ($cart as $item_id => $qty) {
                         <i class="fas fa-shopping-cart text-warning"></i> Shopping Cart
                     </h5>
                     
+                    <!-- Show rental days in cart -->
+                    <?php if($rental_days > 0): ?>
+                        <div class="rental-days-badge mb-3">
+                            <i class="fas fa-calendar-week"></i> Rental Duration: <?= $rental_days ?> day(s)
+                        </div>
+                    <?php endif; ?>
+                    
                     <div id="cartItemsList">
                         <?php if(empty($cartItems)): ?>
                             <div class="empty-cart">
@@ -486,15 +541,17 @@ foreach ($cart as $item_id => $qty) {
                                 <small>Add items from the left panel</small>
                             </div>
                         <?php else: ?>
-                            <?php foreach($cartItems as $item): ?>
+                            <?php foreach($cartItems as $item): 
+                                $item_total = $item['item']['individual_cost'] * $item['qty'] * $rental_days;
+                            ?>
                                 <div class="cart-item">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <strong><?= $item['item']['item_name'] ?></strong><br>
-                                            <small>₱<?= number_format($item['item']['individual_cost'], 2) ?> x <?= $item['qty'] ?></small>
+                                            <small>₱<?= number_format($item['item']['individual_cost'], 2) ?> × <?= $item['qty'] ?> units × <?= $rental_days ?> days</small>
                                         </div>
                                         <div>
-                                            <strong class="text-primary">₱<?= number_format($item['item']['individual_cost'] * $item['qty'], 2) ?></strong>
+                                            <strong class="text-primary">₱<?= number_format($item_total, 2) ?></strong>
                                             <button class="btn-remove ms-2" onclick="removeItem('<?= $item['item']['item_id'] ?>')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -507,8 +564,15 @@ foreach ($cart as $item_id => $qty) {
                     
                     <hr>
                     
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small>Daily Subtotal:</small>
+                            <small>₱<?= number_format($total / max(1, $rental_days), 2) ?></small>
+                        </div>
+                    </div>
+                    
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <strong>Estimated Total:</strong>
+                        <strong>Total for <?= $rental_days ?> day(s):</strong>
                         <span class="total-amount">₱<?= number_format($total, 2) ?></span>
                     </div>
                     
@@ -521,6 +585,43 @@ foreach ($cart as $item_id => $qty) {
     </div>
     
     <script>
+        // Auto-calculate rental days when dates change
+        function calculateRentalDays() {
+            let startDate = document.getElementById('start_date').value;
+            let returnDate = document.getElementById('return_date').value;
+            
+            if (startDate && returnDate) {
+                let start = new Date(startDate);
+                let end = new Date(returnDate);
+                let diffTime = Math.abs(end - start);
+                let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                // If same day, count as 1 day
+                if (diffDays === 0) {
+                    diffDays = 1;
+                }
+                
+                // Update the rental days display
+                let rentalDaysElement = document.querySelector('.rental-days-badge');
+                if (rentalDaysElement) {
+                    rentalDaysElement.innerHTML = `<i class="fas fa-calendar-week"></i> Rental Duration: ${diffDays} day(s)`;
+                }
+            }
+        }
+        
+        // Add event listeners when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            let startDateInput = document.getElementById('start_date');
+            let returnDateInput = document.getElementById('return_date');
+            
+            if (startDateInput) {
+                startDateInput.addEventListener('change', calculateRentalDays);
+            }
+            if (returnDateInput) {
+                returnDateInput.addEventListener('change', calculateRentalDays);
+            }
+        });
+        
         function addToCart() {
             let select = document.getElementById('itemSelect');
             let itemId = select.value;
@@ -541,6 +642,11 @@ foreach ($cart as $item_id => $qty) {
             let employeeId = document.querySelector('select[name="employee_id"]').value;
             let startDate = document.querySelector('input[name="start_date"]').value;
             let returnDate = document.querySelector('input[name="return_date"]').value;
+            
+            if(!startDate || !returnDate) {
+                alert('Please select both start date and return date first');
+                return;
+            }
             
             let form = document.createElement('form');
             form.method = 'POST';
