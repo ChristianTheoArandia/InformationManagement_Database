@@ -132,7 +132,9 @@ $tables = [
         cost INTEGER,
         FOREIGN KEY (transaction_id) REFERENCES TransactionTbl(transaction_id),
         FOREIGN KEY (item_id) REFERENCES Rental_Item(item_id)
-    )"
+    )",
+    "ALTER TABLE TransactionTbl
+ADD COLUMN venue CHAR(30)"
 ];
 
 foreach ($tables as $table) {

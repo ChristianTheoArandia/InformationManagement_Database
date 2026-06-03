@@ -236,6 +236,7 @@ $recentTransactions = $conn->query("
                             <th>Client</th>
                             <th>Start Date</th>
                             <th>Return Date</th>
+                            <th>Venue</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -247,6 +248,7 @@ $recentTransactions = $conn->query("
                                 <td><?= $row['client_name'] ?></td>
                                 <td><?= $row['start_date'] ?></td>
                                 <td><?= $row['return_date'] ?></td>
+                                <td><?= htmlspecialchars($row['venue']) ?></td>
                                 <td>
                                     <?php if($row['return_date'] < date('Y-m-d')): ?>
                                         <span class="badge-active">Completed</span>
