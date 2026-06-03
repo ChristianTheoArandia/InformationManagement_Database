@@ -8,6 +8,69 @@ $items = $conn->query("SELECT * FROM Rental_Item WHERE total_stock > 0");
 
 $cart = $_SESSION['cart'] ?? [];
 
+// Store transaction form data in session to preserve it
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['add_to_cart'])) {
+        // Save current form data to session before redirect
+        $_SESSION['form_data'] = [
+            'client_id' => $_POST['client_id'] ?? '',
+            'employee_id' => $_POST['employee_id'] ?? '',
+            'start_date' => $_POST['start_date'] ?? '',
+            'return_date' => $_POST['return_date'] ?? ''
+        ];
+        
+        $item_id = $_POST['item_id'];
+        $quantity = $_POST['quantity'];
+        $cart[$item_id] = ($cart[$item_id] ?? 0) + $quantity;
+        $_SESSION['cart'] = $cart;
+        header("Location: create.php");
+        exit();
+    } elseif (isset($_POST['remove_item'])) {
+        // Save current form data to session before redirect
+        $_SESSION['form_data'] = [
+            'client_id' => $_POST['client_id'] ?? '',
+            'employee_id' => $_POST['employee_id'] ?? '',
+            'start_date' => $_POST['start_date'] ?? '',
+            'return_date' => $_POST['return_date'] ?? ''
+        ];
+        
+        $item_id = $_POST['remove_item'];
+        if (isset($cart[$item_id])) {
+            unset($cart[$item_id]);
+            $_SESSION['cart'] = $cart;
+        }
+        header("Location: create.php");
+        exit();
+    } elseif (isset($_POST['checkout'])) {
+        $transaction_id = generate_Id('T', 'TransactionTbl', 'transaction_id');
+        $client_id = $_POST['client_id'];
+        $employee_id = $_POST['employee_id'];
+        $start_date = $_POST['start_date'];
+        $return_date = $_POST['return_date'];
+        
+        $stmt = $conn->prepare("INSERT INTO TransactionTbl (transaction_id, client_id, employee_id, transaction_date, start_date, return_date, payment_status) VALUES (?, ?, ?, CURDATE(), ?, ?, 'NOT PAID')");
+        $stmt->bind_param("sssss", $transaction_id, $client_id, $employee_id, $start_date, $return_date);
+        
+        if ($stmt->execute()) {
+            foreach ($cart as $item_id => $quantity) {
+                $conn->query("INSERT INTO Transaction_Item (transaction_id, item_id, quantity) VALUES ('$transaction_id', '$item_id', $quantity)");
+            }
+            unset($_SESSION['cart']);
+            unset($_SESSION['form_data']);
+            header("Location: view.php?id=$transaction_id");
+            exit();
+        }
+    }
+}
+
+// Retrieve saved form data
+$form_data = $_SESSION['form_data'] ?? [
+    'client_id' => '',
+    'employee_id' => '',
+    'start_date' => '',
+    'return_date' => ''
+];
+
 // Handle Add Client from this page
 $showAddClientForm = isset($_GET['add_client']);
 $clientSuccess = '';
@@ -34,51 +97,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_add_client'])) 
     
     if ($stmt->execute()) {
         $clientSuccess = "Client added successfully! ID: $client_id";
+        // Refresh clients list
         $clients = $conn->query("SELECT * FROM Client ORDER BY client_id");
+        // Set the new client as selected
+        $form_data['client_id'] = $client_id;
+        $_SESSION['form_data'] = $form_data;
     } else {
         $clientError = "Error: " . $conn->error;
     }
 }
 
-// Handle AJAX add to cart
-if (isset($_POST['ajax_add_to_cart'])) {
-    $item_id = $_POST['item_id'];
-    $quantity = $_POST['quantity'];
-    $cart[$item_id] = ($cart[$item_id] ?? 0) + $quantity;
-    $_SESSION['cart'] = $cart;
-    
-    // Calculate new total
-    $newTotal = 0;
-    foreach ($cart as $id => $qty) {
-        $item = $conn->query("SELECT individual_cost FROM Rental_Item WHERE item_id = '$id'")->fetch_assoc();
-        if ($item) {
-            $newTotal += $item['individual_cost'] * $qty;
-        }
+// Helper function to generate ID
+function generate_Id($prefix, $table, $column) {
+    global $conn;
+    $result = $conn->query("SELECT $column FROM $table ORDER BY $column DESC LIMIT 1");
+    if ($result && $result->num_rows > 0) {
+        $lastId = $result->fetch_assoc()[$column];
+        $number = intval(substr($lastId, 1)) + 1;
+        return $prefix . str_pad($number, 5, '0', STR_PAD_LEFT);
     }
-    
-    echo json_encode(['success' => true, 'total' => $newTotal]);
-    exit();
-}
-
-// Handle checkout
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
-    $transaction_id = generateId('T', 'TransactionTbl', 'transaction_id');
-    $client_id = $_POST['client_id'];
-    $employee_id = $_POST['employee_id'];
-    $start_date = $_POST['start_date'];
-    $return_date = $_POST['return_date'];
-    
-    $stmt = $conn->prepare("INSERT INTO TransactionTbl (transaction_id, client_id, employee_id, transaction_date, start_date, return_date) VALUES (?, ?, ?, CURDATE(), ?, ?)");
-    $stmt->bind_param("sssss", $transaction_id, $client_id, $employee_id, $start_date, $return_date);
-    
-    if ($stmt->execute()) {
-        foreach ($cart as $item_id => $quantity) {
-            $conn->query("INSERT INTO Transaction_Item (transaction_id, item_id, quantity) VALUES ('$transaction_id', '$item_id', $quantity)");
-        }
-        unset($_SESSION['cart']);
-        header("Location: view.php?id=$transaction_id");
-        exit();
-    }
+    return $prefix . '00001';
 }
 
 // Calculate total
@@ -167,6 +205,11 @@ foreach ($cart as $item_id => $qty) {
             font-weight: 600;
         }
         
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102,126,234,0.3);
+        }
+        
         .btn-success {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             border: none;
@@ -174,6 +217,11 @@ foreach ($cart as $item_id => $qty) {
             padding: 14px;
             font-weight: 600;
             width: 100%;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16,185,129,0.3);
         }
         
         .btn-add-client {
@@ -254,10 +302,12 @@ foreach ($cart as $item_id => $qty) {
             border-radius: 8px;
             padding: 5px 12px;
             font-size: 12px;
+            transition: all 0.3s;
         }
         
         .btn-remove:hover {
             background: #dc2626;
+            transform: scale(1.05);
         }
         
         .alert {
@@ -345,7 +395,7 @@ foreach ($cart as $item_id => $qty) {
                                     $clients = $conn->query("SELECT * FROM Client ORDER BY client_id");
                                     while($c = $clients->fetch_assoc()): 
                                     ?>
-                                        <option value="<?= $c['client_id'] ?>">
+                                        <option value="<?= $c['client_id'] ?>" <?= $form_data['client_id'] == $c['client_id'] ? 'selected' : '' ?>>
                                             <?= $c['first_name'] . ' ' . $c['last_name'] ?> (<?= $c['client_id'] ?>)
                                         </option>
                                     <?php endwhile; ?>
@@ -367,7 +417,7 @@ foreach ($cart as $item_id => $qty) {
                                     $employees = $conn->query("SELECT * FROM Employee ORDER BY employee_id");
                                     while($e = $employees->fetch_assoc()): 
                                     ?>
-                                        <option value="<?= $e['employee_id'] ?>">
+                                        <option value="<?= $e['employee_id'] ?>" <?= $form_data['employee_id'] == $e['employee_id'] ? 'selected' : '' ?>>
                                             <?= $e['first_name'] . ' ' . $e['last_name'] ?>
                                         </option>
                                     <?php endwhile; ?>
@@ -378,14 +428,14 @@ foreach ($cart as $item_id => $qty) {
                                 <label class="form-label">
                                     <i class="fas fa-calendar-alt"></i> RENTAL START DATE
                                 </label>
-                                <input type="date" name="start_date" class="form-control" required>
+                                <input type="date" name="start_date" class="form-control" required value="<?= $form_data['start_date'] ?>">
                             </div>
                             
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">
                                     <i class="fas fa-calendar-check"></i> RETURN DATE
                                 </label>
-                                <input type="date" name="return_date" class="form-control" required>
+                                <input type="date" name="return_date" class="form-control" required value="<?= $form_data['return_date'] ?>">
                             </div>
                         </div>
                         
@@ -437,7 +487,7 @@ foreach ($cart as $item_id => $qty) {
                             </div>
                         <?php else: ?>
                             <?php foreach($cartItems as $item): ?>
-                                <div class="cart-item" data-item-id="<?= $item['item']['item_id'] ?>">
+                                <div class="cart-item">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <strong><?= $item['item']['item_name'] ?></strong><br>
@@ -459,10 +509,10 @@ foreach ($cart as $item_id => $qty) {
                     
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <strong>Estimated Total:</strong>
-                        <span class="total-amount" id="cartTotal">₱<?= number_format($total, 2) ?></span>
+                        <span class="total-amount">₱<?= number_format($total, 2) ?></span>
                     </div>
                     
-                    <button type="submit" form="transactionForm" name="checkout" class="btn btn-success" <?= empty($cartItems) ? 'disabled' : '' ?> id="checkoutBtn">
+                    <button type="submit" form="transactionForm" name="checkout" class="btn btn-success" <?= empty($cartItems) ? 'disabled' : '' ?>>
                         <i class="fas fa-check-circle"></i> Complete Transaction
                     </button>
                 </div>
@@ -481,30 +531,47 @@ foreach ($cart as $item_id => $qty) {
                 return;
             }
             
-            // AJAX request to add to cart without page refresh
-            fetch(window.location.href, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'ajax_add_to_cart=1&item_id=' + itemId + '&quantity=' + quantity
-            })
-            .then(response => response.json())
-            .then(data => {
-                if(data.success) {
-                    // Reload the page to show updated cart
-                    window.location.reload();
-                }
-            })
-            .catch(error => console.error('Error:', error));
+            if(quantity < 1) {
+                alert('Quantity must be at least 1');
+                return;
+            }
+            
+            // Get current form values
+            let clientId = document.querySelector('select[name="client_id"]').value;
+            let employeeId = document.querySelector('select[name="employee_id"]').value;
+            let startDate = document.querySelector('input[name="start_date"]').value;
+            let returnDate = document.querySelector('input[name="return_date"]').value;
+            
+            let form = document.createElement('form');
+            form.method = 'POST';
+            form.innerHTML = `
+                <input type="hidden" name="item_id" value="${itemId}">
+                <input type="hidden" name="quantity" value="${quantity}">
+                <input type="hidden" name="add_to_cart" value="1">
+                <input type="hidden" name="client_id" value="${clientId}">
+                <input type="hidden" name="employee_id" value="${employeeId}">
+                <input type="hidden" name="start_date" value="${startDate}">
+                <input type="hidden" name="return_date" value="${returnDate}">
+            `;
+            document.body.appendChild(form);
+            form.submit();
         }
         
         function removeItem(itemId) {
-            // For remove, we still need a form submission since it's more complex
+            // Get current form values
+            let clientId = document.querySelector('select[name="client_id"]').value;
+            let employeeId = document.querySelector('select[name="employee_id"]').value;
+            let startDate = document.querySelector('input[name="start_date"]').value;
+            let returnDate = document.querySelector('input[name="return_date"]').value;
+            
             let form = document.createElement('form');
             form.method = 'POST';
             form.innerHTML = `
                 <input type="hidden" name="remove_item" value="${itemId}">
+                <input type="hidden" name="client_id" value="${clientId}">
+                <input type="hidden" name="employee_id" value="${employeeId}">
+                <input type="hidden" name="start_date" value="${startDate}">
+                <input type="hidden" name="return_date" value="${returnDate}">
             `;
             document.body.appendChild(form);
             form.submit();
