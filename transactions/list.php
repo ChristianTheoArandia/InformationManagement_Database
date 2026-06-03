@@ -139,23 +139,21 @@ $transactions = $conn->query("
         }
         
         .badge-active {
+            background: #f59e0b;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .badge-completed {
             background: #10b981;
             color: white;
             padding: 5px 12px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
-            display: inline-block;
-        }
-        
-        .badge-completed {
-            background: #6b7280;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            display: inline-block;
         }
         
         .alert {
@@ -265,7 +263,7 @@ $transactions = $conn->query("
                                     <?php if($row['return_date'] < date('Y-m-d')): ?>
                                         <span class="badge-completed">Completed</span>
                                     <?php else: ?>
-                                        <span class="badge-active">Active</span>
+                                        <span class="badge-active">Ongoing</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
