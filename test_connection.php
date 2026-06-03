@@ -5,7 +5,7 @@ ini_set('display_errors', 1);
 echo "<h1>XAMPP Connection Test</h1>";
 
 // Test 1: PHP Version
-echo "<h3>✅ PHP Version: " . phpversion() . "</h3>";
+echo "<h3>PHP Version: " . phpversion() . "</h3>";
 
 // Test 2: Connect to MySQL WITHOUT database first
 echo "<h3>Testing MySQL Connection...</h3>";
@@ -14,23 +14,23 @@ echo "<h3>Testing MySQL Connection...</h3>";
 $conn = new mysqli("localhost", "root", "");
 
 if ($conn->connect_error) {
-    die("<p style='color:red'>❌ MySQL Connection Failed: " . $conn->connect_error . "</p>");
+    die("<p style='color:red'>MySQL Connection Failed: " . $conn->connect_error . "</p>");
 }
 
-echo "<p style='color:green'>✅ Connected to MySQL Server!</p>";
+echo "<p style='color:green'>Connected to MySQL Server!</p>";
 
 // Test 3: Create database
 echo "<h3>Creating database...</h3>";
 $sql = "CREATE DATABASE IF NOT EXISTS rental_db";
 if ($conn->query($sql)) {
-    echo "<p style='color:green'>✅ Database 'rental_db' created or already exists!</p>";
+    echo "<p style='color:green'>Database 'rental_db' created or already exists!</p>";
 } else {
-    die("<p style='color:red'>❌ Error creating database: " . $conn->error . "</p>");
+    die("<p style='color:red'>Error creating database: " . $conn->error . "</p>");
 }
 
 // Select the database
 $conn->select_db("rental_db");
-echo "<p style='color:green'>✅ Now using database 'rental_db'</p>";
+echo "<p style='color:green'>Now using database 'rental_db'</p>";
 
 // Test 4: Create tables
 echo "<h3>Creating tables...</h3>";
@@ -100,13 +100,9 @@ $tables = [
         transaction_date DATE,
         start_date DATE,
         return_date DATE,
-        payment_status ENUM('PAID', 'NOT PAID') DEFAULT 'NOT PAID',
         FOREIGN KEY (client_id) REFERENCES Client(client_id),
         FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
     )",
-
-    "ALTER TABLE TransactionTbl 
-        ADD COLUMN payment_status ENUM('PAID', 'NOT PAID') DEFAULT 'NOT PAID'",
     
     "CREATE TABLE IF NOT EXISTS Payment (
         payment_id CHAR(6) PRIMARY KEY,
@@ -125,14 +121,25 @@ $tables = [
         PRIMARY KEY (transaction_id, item_id),
         FOREIGN KEY (transaction_id) REFERENCES TransactionTbl(transaction_id),
         FOREIGN KEY (item_id) REFERENCES Rental_Item(item_id)
+    )",
+    
+    "CREATE TABLE IF NOT EXISTS Repair_Fee (
+        repair_fee_id CHAR(6) PRIMARY KEY,
+        transaction_id CHAR(6),
+        item_id CHAR(6),
+        date_paid DATE,
+        status VARCHAR(15),
+        cost INTEGER,
+        FOREIGN KEY (transaction_id) REFERENCES TransactionTbl(transaction_id),
+        FOREIGN KEY (item_id) REFERENCES Rental_Item(item_id)
     )"
 ];
 
 foreach ($tables as $table) {
     if ($conn->query($table)) {
-        echo "<p style='color:green'>✓ Table created/verified</p>";
+        echo "<p style='color:green'>Table created/verified</p>";
     } else {
-        echo "<p style='color:orange'>⚠ Table may already exist: " . $conn->error . "</p>";
+        echo "<p style='color:orange'>Table may already exist: " . $conn->error . "</p>";
     }
 }
 
@@ -141,45 +148,39 @@ echo "<h3>Adding default data...</h3>";
 
 // Insert item types
 $conn->query("INSERT IGNORE INTO Item_Type VALUES 
-    ('001', 'Electronics'),
-    ('002', 'Furniture'),
-    ('003', 'Tools'),
-    ('004', 'Vehicles'),
-    ('005', 'Appliances')");
-echo "<p style='color:green'>✓ Item types added</p>";
+    ('001', 'Chair'),
+    ('002', 'Table')");
+echo "<p style='color:green'>Item types added</p>";
 
 // Insert payment types
 $conn->query("INSERT IGNORE INTO Payment_Type VALUES 
     ('001', 'Cash'),
-    ('002', 'Card'),
     ('003', 'Digital Wallet')");
-echo "<p style='color:green'>✓ Payment types added</p>";
+echo "<p style='color:green'>Payment types added</p>";
 
 // Insert card types
 $conn->query("INSERT IGNORE INTO Card_Type VALUES 
     ('001', 'Visa'),
-    ('002', 'Mastercard'),
-    ('003', 'Amex')");
-echo "<p style='color:green'>✓ Card types added</p>";
+    ('002', 'Mastercard')");
+echo "<p style='color:green'>Card types added</p>";
 
 // Insert wallet types
 $conn->query("INSERT IGNORE INTO Wallet_Type VALUES 
     ('001', 'GCash'),
-    ('002', 'PayMaya'),
-    ('003', 'GrabPay')");
-echo "<p style='color:green'>✓ Wallet types added</p>";
+    ('002', 'PayMaya')");
+echo "<p style='color:green'>Wallet types added</p>";
 
 // Insert sample client
 $conn->query("INSERT IGNORE INTO Client VALUES 
     ('C00001', 'John', 'Doe', '09123456789', 'Manila'),
     ('C00002', 'Jane', 'Smith', '09987654321', 'Quezon City')");
-echo "<p style='color:green'>✓ Sample clients added</p>";
+echo "<p style='color:green'>Sample clients added</p>";
 
 // Insert sample employee
 $conn->query("INSERT IGNORE INTO Employee VALUES 
     ('E00001', 'James', 'Musa', 500),
     ('E00002', 'Maria', 'Santos', 550)");
-echo "<p style='color:green'>✓ Sample employees added</p>";
+echo "<p style='color:green'>Sample employees added</p>";
 
 // Test 6: Display tables
 echo "<h3>Tables in database:</h3>";
@@ -207,9 +208,9 @@ while($row = $result->fetch_assoc()) {
 echo "</table>";
 
 echo "<hr>";
-echo "<h2 style='color:green'>✅ All tests passed! Your database is ready!</h2>";
-echo "<a href='index.php' style='font-size: 18px;'>Go to Main Dashboard →</a><br><br>";
-echo "<a href='clients/add.php' style='font-size: 18px;'>Add a Client →</a>";
+echo "<h2 style='color:green'>All tests passed! Your database is ready!</h2>";
+echo "<a href='index.php' style='font-size: 18px;'>Go to Main Dashboard</a><br><br>";
+echo "<a href='clients/add.php' style='font-size: 18px;'>Add a Client</a>";
 
 $conn->close();
 ?>
