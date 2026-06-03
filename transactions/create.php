@@ -34,39 +34,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_add_client'])) 
     
     if ($stmt->execute()) {
         $clientSuccess = "Client added successfully! ID: $client_id";
-        // Refresh clients list
         $clients = $conn->query("SELECT * FROM Client ORDER BY client_id");
     } else {
         $clientError = "Error: " . $conn->error;
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['add_to_cart'])) {
-        $item_id = $_POST['item_id'];
-        $quantity = $_POST['quantity'];
-        $cart[$item_id] = ($cart[$item_id] ?? 0) + $quantity;
-        $_SESSION['cart'] = $cart;
-        header("Location: create.php");
-        exit();
-    } elseif (isset($_POST['checkout'])) {
-        $transaction_id = generateId('T', 'TransactionTbl', 'transaction_id');
-        $client_id = $_POST['client_id'];
-        $employee_id = $_POST['employee_id'];
-        $start_date = $_POST['start_date'];
-        $return_date = $_POST['return_date'];
-        
-        $stmt = $conn->prepare("INSERT INTO TransactionTbl (transaction_id, client_id, employee_id, transaction_date, start_date, return_date) VALUES (?, ?, ?, CURDATE(), ?, ?)");
-        $stmt->bind_param("sssss", $transaction_id, $client_id, $employee_id, $start_date, $return_date);
-        
-        if ($stmt->execute()) {
-            foreach ($cart as $item_id => $quantity) {
-                $conn->query("INSERT INTO Transaction_Item (transaction_id, item_id, quantity) VALUES ('$transaction_id', '$item_id', $quantity)");
-            }
-            unset($_SESSION['cart']);
-            header("Location: view.php?id=$transaction_id");
-            exit();
+// Handle AJAX add to cart
+if (isset($_POST['ajax_add_to_cart'])) {
+    $item_id = $_POST['item_id'];
+    $quantity = $_POST['quantity'];
+    $cart[$item_id] = ($cart[$item_id] ?? 0) + $quantity;
+    $_SESSION['cart'] = $cart;
+    
+    // Calculate new total
+    $newTotal = 0;
+    foreach ($cart as $id => $qty) {
+        $item = $conn->query("SELECT individual_cost FROM Rental_Item WHERE item_id = '$id'")->fetch_assoc();
+        if ($item) {
+            $newTotal += $item['individual_cost'] * $qty;
         }
+    }
+    
+    echo json_encode(['success' => true, 'total' => $newTotal]);
+    exit();
+}
+
+// Handle checkout
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
+    $transaction_id = generateId('T', 'TransactionTbl', 'transaction_id');
+    $client_id = $_POST['client_id'];
+    $employee_id = $_POST['employee_id'];
+    $start_date = $_POST['start_date'];
+    $return_date = $_POST['return_date'];
+    
+    $stmt = $conn->prepare("INSERT INTO TransactionTbl (transaction_id, client_id, employee_id, transaction_date, start_date, return_date) VALUES (?, ?, ?, CURDATE(), ?, ?)");
+    $stmt->bind_param("sssss", $transaction_id, $client_id, $employee_id, $start_date, $return_date);
+    
+    if ($stmt->execute()) {
+        foreach ($cart as $item_id => $quantity) {
+            $conn->query("INSERT INTO Transaction_Item (transaction_id, item_id, quantity) VALUES ('$transaction_id', '$item_id', $quantity)");
+        }
+        unset($_SESSION['cart']);
+        header("Location: view.php?id=$transaction_id");
+        exit();
     }
 }
 
@@ -426,7 +437,7 @@ foreach ($cart as $item_id => $qty) {
                             </div>
                         <?php else: ?>
                             <?php foreach($cartItems as $item): ?>
-                                <div class="cart-item">
+                                <div class="cart-item" data-item-id="<?= $item['item']['item_id'] ?>">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <strong><?= $item['item']['item_name'] ?></strong><br>
@@ -448,10 +459,10 @@ foreach ($cart as $item_id => $qty) {
                     
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <strong>Estimated Total:</strong>
-                        <span class="total-amount">₱<?= number_format($total, 2) ?></span>
+                        <span class="total-amount" id="cartTotal">₱<?= number_format($total, 2) ?></span>
                     </div>
                     
-                    <button type="submit" form="transactionForm" name="checkout" class="btn btn-success" <?= empty($cartItems) ? 'disabled' : '' ?>>
+                    <button type="submit" form="transactionForm" name="checkout" class="btn btn-success" <?= empty($cartItems) ? 'disabled' : '' ?> id="checkoutBtn">
                         <i class="fas fa-check-circle"></i> Complete Transaction
                     </button>
                 </div>
@@ -470,18 +481,26 @@ foreach ($cart as $item_id => $qty) {
                 return;
             }
             
-            let form = document.createElement('form');
-            form.method = 'POST';
-            form.innerHTML = `
-                <input type="hidden" name="item_id" value="${itemId}">
-                <input type="hidden" name="quantity" value="${quantity}">
-                <input type="hidden" name="add_to_cart" value="1">
-            `;
-            document.body.appendChild(form);
-            form.submit();
+            // AJAX request to add to cart without page refresh
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'ajax_add_to_cart=1&item_id=' + itemId + '&quantity=' + quantity
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    // Reload the page to show updated cart
+                    window.location.reload();
+                }
+            })
+            .catch(error => console.error('Error:', error));
         }
         
         function removeItem(itemId) {
+            // For remove, we still need a form submission since it's more complex
             let form = document.createElement('form');
             form.method = 'POST';
             form.innerHTML = `
