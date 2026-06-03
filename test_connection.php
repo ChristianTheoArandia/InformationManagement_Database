@@ -100,9 +100,13 @@ $tables = [
         transaction_date DATE,
         start_date DATE,
         return_date DATE,
+        payment_status ENUM('PAID', 'NOT PAID') DEFAULT 'NOT PAID',
         FOREIGN KEY (client_id) REFERENCES Client(client_id),
         FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
     )",
+
+    "ALTER TABLE TransactionTbl 
+        ADD COLUMN payment_status ENUM('PAID', 'NOT PAID') DEFAULT 'NOT PAID'",
     
     "CREATE TABLE IF NOT EXISTS Payment (
         payment_id CHAR(6) PRIMARY KEY,

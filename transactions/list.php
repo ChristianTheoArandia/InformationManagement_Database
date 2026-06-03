@@ -188,6 +188,32 @@ $transactions = $conn->query("
         .table-responsive {
             overflow-x: auto;
         }
+
+        .badge-paid {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.badge-not-paid {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
     </style>
 </head>
 <body>
@@ -222,6 +248,7 @@ $transactions = $conn->query("
                                 <th>Start Date</th>
                                 <th>Return Date</th>
                                 <th>Status</th>
+                                <th>Payment Status</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -238,6 +265,20 @@ $transactions = $conn->query("
                                     <?php else: ?>
                                         <span class="badge-active">Active</span>
                                     <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php 
+                                        $status = htmlspecialchars($row['payment_status']);
+                                        if ($status == 'PAID'): ?>
+                                            <span class="badge-paid">
+                                            <i class="fas fa-check-circle"></i> <?= $status ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge-not-paid">
+                                            <i class="fas fa-times-circle"></i> <?= $status ?>
+                                            </span>
+                                        <?php endif; ?>
+
                                 </td>
                                 <td>
                                     <a href="view.php?id=<?= $row['transaction_id'] ?>" class="btn-view">

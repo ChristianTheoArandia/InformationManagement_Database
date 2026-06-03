@@ -33,6 +33,8 @@ $items = $conn->query("
     JOIN Rental_Item ri ON ti.item_id = ri.item_id
     WHERE ti.transaction_id = '$transaction_id'
 ");
+
+$isPaid = $transaction['payment_status'] == 'PAID';
 ?>
 
 <!DOCTYPE html>
@@ -117,6 +119,26 @@ $items = $conn->query("
             font-weight: 700;
             color: #667eea;
         }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .status-paid {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .status-not-paid {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -152,6 +174,20 @@ $items = $conn->query("
                 <div class="info-row">
                     <div class="info-label">Return Date:</div>
                     <div class="info-value"><?= htmlspecialchars($transaction['return_date']) ?></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Payment Status:</div>
+                    <div class="info-value">
+                        <?php if($isPaid): ?>
+                            <span class="status-badge status-paid">
+                                <i class="fas fa-check-circle"></i> PAID
+                            </span>
+                        <?php else: ?>
+                            <span class="status-badge status-not-paid">
+                                <i class="fas fa-times-circle"></i> NOT PAID
+                            </span>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </div>
@@ -203,9 +239,17 @@ $items = $conn->query("
         </div>
         
         <div class="mt-4 d-flex gap-3">
-            <a href="../payments/process_payment.php?transaction_id=<?= $transaction_id ?>" class="btn-payment">
-                <i class="fas fa-credit-card"></i> Process Payment
-            </a>
+            <?php if($isPaid): ?>
+                <!-- Disabled payment button for paid transactions -->
+                <button class="btn-payment disabled" disabled onclick="return false;">
+                    <i class="fas fa-check-circle"></i> Transaction Paid
+                </button>
+            <?php else: ?>
+                <!-- Active payment button for unpaid transactions -->
+                <a href="../payments/process_payment.php?transaction_id=<?= $transaction_id ?>" class="btn-payment">
+                    <i class="fas fa-credit-card"></i> Process Payment 
+                </a>
+            <?php endif; ?>
             <a href="list.php" class="btn-back">
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>

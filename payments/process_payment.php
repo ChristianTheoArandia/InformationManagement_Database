@@ -65,11 +65,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $amount_received = $_POST['amount_received'];
                 $change_amount = $amount_received - $amount;
                 $conn->query("INSERT INTO Cash (payment_id, amount_received, change_amount) VALUES ('$payment_id', $amount_received, $change_amount)");
+                $update_status = $conn->prepare("UPDATE TransactionTbl SET payment_status = 'PAID' WHERE transaction_id = ?");
+                $update_status->bind_param("s", $transaction_id);
+                $update_status->execute();
                 $message = "Cash payment recorded! Change: ₱" . number_format($change_amount, 2);
                 $messageType = "success";
             }
             elseif ($payment_type_id == '003') {
                 $conn->query("INSERT INTO Wallet (payment_id, wallet_type_id, account_number, transaction_reference_no) VALUES ('$payment_id', '$wallet_type_id', '$account_number', '$reference_no')");
+                $update_status = $conn->prepare("UPDATE TransactionTbl SET payment_status = 'PAID' WHERE transaction_id = ?");
+                $update_status->bind_param("s", $transaction_id);
+                $update_status->execute();
                 $message = "Digital wallet payment recorded! Ref: $reference_no";
                 $messageType = "success";
             }
