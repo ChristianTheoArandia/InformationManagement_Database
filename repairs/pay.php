@@ -1,28 +1,34 @@
 <?php
 require_once '../includes/database.php';
 
-$transaction_id = $_GET['transaction_id'] ?? '';
+$repair_id = $_GET['id'] ?? '';
 $message = '';
 $messageType = '';
 
-if (!$transaction_id) {
-    header("Location: ../transactions/list.php?error=No transaction selected");
+if (!$repair_id) {
+    header("Location: list.php?error=No repair selected");
     exit();
 }
 
-// Get transaction details
-$transaction = $conn->query("
-    SELECT t.*, SUM(ti.quantity * ri.individual_cost) as total_amount
-    FROM TransactionTbl t
-    JOIN Transaction_Item ti ON t.transaction_id = ti.transaction_id
-    JOIN Rental_Item ri ON ti.item_id = ri.item_id
-    WHERE t.transaction_id = '$transaction_id'
-    GROUP BY t.transaction_id
+// Get repair details
+$repair = $conn->query("
+    SELECT rf.*, ri.item_name, CONCAT(c.first_name, ' ', c.last_name) as client_name
+    FROM Repair_Fee rf
+    JOIN Rental_Item ri ON rf.item_id = ri.item_id
+    JOIN TransactionTbl t ON rf.transaction_id = t.transaction_id
+    JOIN Client c ON t.client_id = c.client_id
+    WHERE rf.repair_fee_id = '$repair_id'
 ")->fetch_assoc();
 
-$totalAmount = $transaction['total_amount'] ?? 0;
+if (!$repair) {
+    header("Location: list.php?error=Repair not found");
+    exit();
+}
 
-// Get payment types
+$quantity = $repair['quantity'] ?? 1;
+$totalAmount = $quantity * $repair['cost'];
+
+// Get payment types (only Cash and Digital Wallet)
 $paymentTypes = $conn->query("SELECT * FROM Payment_Type WHERE payment_type_id IN ('001', '003')");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
@@ -31,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
     $amount = $totalAmount;
     $error = false;
     
+    // Validation for Digital Wallet
     if ($payment_type_id == '003') {
         $wallet_type_id = $_POST['wallet_type_id'];
         $account_number = $_POST['account_number'];
@@ -64,9 +71,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
     
     if (!$error) {
         $sql = "INSERT INTO Payment (payment_id, transaction_id, payment_date, amount, payment_type_id) 
-                VALUES (?, ?, CURDATE(), ?, ?)";
+                VALUES (?, NULL, CURDATE(), ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssis", $payment_id, $transaction_id, $amount, $payment_type_id);
+        $stmt->bind_param("sis", $payment_id, $amount, $payment_type_id);
         
         if ($stmt->execute()) {
             if ($payment_type_id == '001') {
@@ -77,10 +84,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
                 $conn->query("INSERT INTO Wallet (payment_id, wallet_type_id, account_number, transaction_reference_no) VALUES ('$payment_id', '$wallet_type_id', '$account_number', '$reference_no')");
             }
             
-            // Update payment status
-            $conn->query("UPDATE TransactionTbl SET payment_status = 'PAID' WHERE transaction_id = '$transaction_id'");
+            $conn->query("UPDATE Repair_Fee SET status = 'Paid' WHERE repair_fee_id = '$repair_id'");
             
-            header("Location: ../transactions/list.php?success=Payment recorded! Amount: ₱" . number_format($amount, 2));
+            header("Location: list.php?success=Payment recorded! Amount: ₱" . number_format($amount, 2));
             exit();
         } else {
             $message = "Database Error: " . $conn->error;
@@ -95,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Process Payment - Table & Chair Rental</title>
+    <title>Pay Repair Fee - Table & Chair Rental</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -171,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
 <body>
     <div class="payment-container">
         <div class="payment-card">
-            <h3><i class="fas fa-credit-card"></i> Process Payment</h3>
+            <h3><i class="fas fa-tools"></i> Pay Repair Fee</h3>
             
             <?php if($message): ?>
                 <div class="alert alert-<?= $messageType ?>"><?= $message ?></div>
@@ -179,11 +185,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
             
             <div class="info-box">
                 <div class="d-flex justify-content-between mb-2">
-                    <strong>Transaction ID:</strong>
-                    <span><?= htmlspecialchars($transaction_id) ?></span>
+                    <strong>Repair ID:</strong>
+                    <span><?= htmlspecialchars($repair_id) ?></span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <strong>Client:</strong>
+                    <span><?= htmlspecialchars($repair['client_name']) ?></span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <strong>Item:</strong>
+                    <span><?= htmlspecialchars($repair['item_name']) ?></span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <strong>Quantity:</strong>
+                    <span><?= $quantity ?> unit(s)</span>
                 </div>
                 <div class="d-flex justify-content-between">
-                    <strong>Total Amount Due:</strong>
+                    <strong>Amount Due:</strong>
                     <span class="total-amount">₱<?= number_format($totalAmount, 2) ?></span>
                 </div>
             </div>
@@ -232,10 +250,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
                 
                 <div class="button-group">
                     <button type="submit" name="submit_payment" class="btn-payment">
-                        <i class="fas fa-check-circle"></i> Process Payment
+                        <i class="fas fa-check-circle"></i> Record Payment
                     </button>
-                    <a href="../transactions/list.php" class="btn-back">
-                        <i class="fas fa-arrow-left"></i> Back to Transactions
+                    <a href="list.php" class="btn-back">
+                        <i class="fas fa-arrow-left"></i> Back to Repairs
                     </a>
                 </div>
             </form>
@@ -270,6 +288,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
                 refHint.innerHTML = 'GCash: 13 digits | PayMaya: 12 digits';
                 refInput.maxLength = '';
                 refInput.placeholder = 'Enter reference number';
+            }
+        });
+        
+        document.getElementById('paymentForm').addEventListener('submit', function(e) {
+            const paymentType = document.getElementById('paymentType').value;
+            
+            if (!paymentType) {
+                alert('Please select a payment method');
+                e.preventDefault();
+                return false;
+            }
+            
+            if (paymentType === '003') {
+                const accountNumber = document.getElementById('accountNumber').value;
+                const referenceNo = document.getElementById('referenceNo').value;
+                const walletType = document.getElementById('walletType').value;
+                
+                if (!walletType) {
+                    alert('Please select a wallet type');
+                    e.preventDefault();
+                    return false;
+                }
+                
+                if (!/^\d{11}$/.test(accountNumber)) {
+                    alert('Account number must be exactly 11 digits!');
+                    e.preventDefault();
+                    return false;
+                }
+                
+                if (walletType === '001' && !/^\d{13}$/.test(referenceNo)) {
+                    alert('GCash reference number must be exactly 13 digits!');
+                    e.preventDefault();
+                    return false;
+                }
+                if (walletType === '002' && !/^\d{12}$/.test(referenceNo)) {
+                    alert('PayMaya reference number must be exactly 12 digits!');
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            if (paymentType === '001') {
+                const amountReceived = document.getElementById('amountReceived').value;
+                const totalAmount = <?= $totalAmount ?>;
+                
+                if (!amountReceived || amountReceived < totalAmount) {
+                    alert('Amount received must be at least ₱' + totalAmount.toFixed(2));
+                    e.preventDefault();
+                    return false;
+                }
             }
         });
     </script>

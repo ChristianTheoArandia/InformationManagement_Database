@@ -1,7 +1,6 @@
 <?php
 require_once '../includes/database.php';
 
-// Get all repair fees with client and item details including quantity
 $repairs = $conn->query("
     SELECT rf.*, 
            CONCAT(c.first_name, ' ', c.last_name) as client_name, 
@@ -26,28 +25,15 @@ $repairs = $conn->query("
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../includes/sidebar.css">
     <style>
-        * {
-            font-family: 'Poppins', sans-serif;
-        }
-        
-        body {
-            background: #f0f2f5;
-            margin: 0;
-        }
-        
-        .main-content {
-            margin-left: 280px;
-            padding: 25px 30px;
-            min-height: 100vh;
-        }
-        
+        * { font-family: 'Poppins', sans-serif; }
+        body { background: #f0f2f5; margin: 0; }
+        .main-content { margin-left: 280px; padding: 25px 30px; min-height: 100vh; }
         .repair-card {
             background: white;
             border-radius: 20px;
             padding: 30px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.08);
         }
-        
         .header-section {
             display: flex;
             justify-content: space-between;
@@ -56,19 +42,13 @@ $repairs = $conn->query("
             flex-wrap: wrap;
             gap: 15px;
         }
-        
         .header-section h3 {
             font-size: 24px;
             font-weight: 700;
             color: #333;
             margin: 0;
         }
-        
-        .header-section h3 i {
-            color: #f59e0b;
-            margin-right: 10px;
-        }
-        
+        .header-section h3 i { color: #f59e0b; margin-right: 10px; }
         .btn-back {
             background: #6b7280;
             color: white;
@@ -80,17 +60,20 @@ $repairs = $conn->query("
             gap: 8px;
             margin-top: 20px;
         }
-        
-        .btn-back:hover {
-            background: #4b5563;
+        .btn-back:hover { background: #4b5563; color: white; }
+        .btn-pay {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
-        
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
+        .btn-pay:hover { background: #059669; color: white; }
+        .table { width: 100%; border-collapse: collapse; }
         .table thead th {
             background: #f8f9fa;
             padding: 14px;
@@ -100,73 +83,19 @@ $repairs = $conn->query("
             color: #555;
             border-bottom: 2px solid #e5e7eb;
         }
-        
         .table tbody td {
             padding: 14px;
             border-bottom: 1px solid #e5e7eb;
             vertical-align: middle;
         }
-        
-        .badge-pending {
-            background: #f59e0b;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            display: inline-block;
-        }
-        
-        .badge-paid {
-            background: #10b981;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            display: inline-block;
-        }
-        
-        .quantity-badge {
-            background: #e0e7ff;
-            color: #4338ca;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            display: inline-block;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 50px;
-            color: #9ca3af;
-        }
-        
-        .empty-state i {
-            font-size: 60px;
-            margin-bottom: 15px;
-        }
-        
-        .table-responsive {
-            overflow-x: auto;
-        }
-        
-        .alert {
-            border-radius: 12px;
-            padding: 12px 20px;
-            margin-bottom: 20px;
-        }
-        
-        .alert-success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        
-        .alert-danger {
-            background: #fee2e2;
-            color: #991b1b;
-        }
+        .badge-pending { background: #f59e0b; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; display: inline-block; }
+        .badge-paid { background: #10b981; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; display: inline-block; }
+        .quantity-badge { background: #e0e7ff; color: #4338ca; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .empty-state { text-align: center; padding: 50px; color: #9ca3af; }
+        .empty-state i { font-size: 60px; margin-bottom: 15px; }
+        .table-responsive { overflow-x: auto; }
+        .alert-success { background: #d1fae5; color: #065f46; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; }
+        .alert-danger { background: #fee2e2; color: #991b1b; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -181,11 +110,11 @@ $repairs = $conn->query("
             </div>
             
             <?php if(isset($_GET['success'])): ?>
-                <div class="alert alert-success"><?= htmlspecialchars($_GET['success']) ?></div>
+                <div class="alert-success"><?= htmlspecialchars($_GET['success']) ?></div>
             <?php endif; ?>
             
             <?php if(isset($_GET['error'])): ?>
-                <div class="alert alert-danger"><?= htmlspecialchars($_GET['error']) ?></div>
+                <div class="alert-danger"><?= htmlspecialchars($_GET['error']) ?></div>
             <?php endif; ?>
             
             <?php if($repairs && $repairs->num_rows > 0): ?>
@@ -199,29 +128,39 @@ $repairs = $conn->query("
                                 <th>Item</th>
                                 <th>Quantity</th>
                                 <th>Date Paid</th>
-                                <th>Cost</th>
+                                <th>Total Cost</th>
                                 <th>Status</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php while($row = $repairs->fetch_assoc()): ?>
+                                <?php 
+                                    $quantity = $row['quantity'] ?? 1;
+                                    $totalCost = $quantity * $row['cost'];
+                                ?>
                             <tr>
                                 <td><?= htmlspecialchars($row['repair_fee_id']) ?></td>
                                 <td><?= htmlspecialchars($row['transaction_id']) ?></td>
                                 <td><?= htmlspecialchars($row['client_name']) ?></td>
                                 <td><?= htmlspecialchars($row['item_name']) ?></td>
-                                <td>
-                                    <span class="quantity-badge">
-                                        <i class="fas fa-box"></i> <?= $row['quantity'] ?? 1 ?> unit(s)
-                                    </span>
-                                </td>
+                                <td><span class="quantity-badge"><?= $quantity ?> unit(s)</span></td>
                                 <td><?= $row['date_paid'] ?></td>
-                                <td>₱<?= number_format(($row['quantity'] ?? 1) * $row['cost'], 2) ?></td>
+                                <td>₱<?= number_format($totalCost, 2) ?></td>
                                 <td>
                                     <?php if($row['status'] == 'Paid'): ?>
-                                        <span class="badge-paid"><i class="fas fa-check-circle"></i> Paid</span>
+                                        <span class="badge-paid">Paid</span>
                                     <?php else: ?>
-                                        <span class="badge-pending"><i class="fas fa-clock"></i> Pending</span>
+                                        <span class="badge-pending">Pending</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if($row['status'] == 'Pending'): ?>
+                                        <a href="pay.php?id=<?= $row['repair_fee_id'] ?>" class="btn-pay">
+                                            <i class="fas fa-money-bill"></i> Record Payment
+                                        </a>
+                                    <?php else: ?>
+                                        <span style="color: #10b981;"><i class="fas fa-check"></i> Completed</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>
