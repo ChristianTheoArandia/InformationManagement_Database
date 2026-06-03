@@ -27,10 +27,16 @@ $current_folder = basename(dirname($_SERVER['PHP_SELF']));
                 <span>Employees</span>
             </a>
         </li>
-        <li class="<?= $current_folder == 'items' ? 'active' : '' ?>">
+        <li class="<?= $current_page == 'manage.php' ? 'active' : '' ?>">
             <a href="/InformationManagement_Database/items/manage.php">
                 <i class="fas fa-boxes"></i>
                 <span>Inventory</span>
+            </a>
+        </li>
+        <li class="<?= $current_page == 'availability.php' ? 'active' : '' ?>">
+            <a href="/InformationManagement_Database/items/availability.php">
+                <i class="fas fa-boxes"></i>
+                <span>Availability Calendar</span>
             </a>
         </li>
         <li class="<?= $current_folder == 'transactions' ? 'active' : '' ?>">
