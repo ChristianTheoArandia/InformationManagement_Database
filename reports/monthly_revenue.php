@@ -211,7 +211,7 @@ while($row = $payments->fetch_assoc()) {
                 </div>
             <?php endif; ?>
             
-            <div><a href="../index.php" class="btn-back"><i class="fas fa-arrow-left"></i> Back to Dashboard</a></div>
+            <div><a href="index.php" class="btn-back"><i class="fas fa-arrow-left"></i> Back to Reports</a></div>
         </div>
     </div>
     

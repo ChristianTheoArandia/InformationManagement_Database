@@ -52,7 +52,7 @@ $current_folder = basename(dirname($_SERVER['PHP_SELF']));
             </a>
         </li>
         <li class="<?= $current_folder == 'reports' ? 'active' : '' ?>">
-            <a href="/InformationManagement_Database/reports/monthly_revenue.php">
+            <a href="/InformationManagement_Database/reports/index.php">
                 <i class="fas fa-chart-line"></i>
                 <span>Reports</span>
             </a>
