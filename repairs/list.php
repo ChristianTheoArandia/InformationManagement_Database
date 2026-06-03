@@ -1,16 +1,16 @@
 <?php
 require_once '../includes/database.php';
 
-// Get all repair fees with client and item details
+// Get all repair fees with client and item details including quantity
 $repairs = $conn->query("
     SELECT rf.*, 
            CONCAT(c.first_name, ' ', c.last_name) as client_name, 
            ri.item_name,
            t.transaction_id
     FROM Repair_Fee rf
-    LEFT JOIN TransactionTbl t ON rf.transaction_id = t.transaction_id
-    LEFT JOIN Client c ON t.client_id = c.client_id
-    LEFT JOIN Rental_Item ri ON rf.item_id = ri.item_id
+    JOIN TransactionTbl t ON rf.transaction_id = t.transaction_id
+    JOIN Client c ON t.client_id = c.client_id
+    JOIN Rental_Item ri ON rf.item_id = ri.item_id
     ORDER BY rf.date_paid DESC
 ");
 ?>
@@ -107,6 +107,16 @@ $repairs = $conn->query("
             vertical-align: middle;
         }
         
+        .badge-pending {
+            background: #f59e0b;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+        }
+        
         .badge-paid {
             background: #10b981;
             color: white;
@@ -117,13 +127,13 @@ $repairs = $conn->query("
             display: inline-block;
         }
         
-        .badge-pending {
-            background: #f59e0b;
-            color: white;
-            padding: 5px 12px;
+        .quantity-badge {
+            background: #e0e7ff;
+            color: #4338ca;
+            padding: 5px 10px;
             border-radius: 20px;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
             display: inline-block;
         }
         
@@ -170,6 +180,14 @@ $repairs = $conn->query("
                 </h3>
             </div>
             
+            <?php if(isset($_GET['success'])): ?>
+                <div class="alert alert-success"><?= htmlspecialchars($_GET['success']) ?></div>
+            <?php endif; ?>
+            
+            <?php if(isset($_GET['error'])): ?>
+                <div class="alert alert-danger"><?= htmlspecialchars($_GET['error']) ?></div>
+            <?php endif; ?>
+            
             <?php if($repairs && $repairs->num_rows > 0): ?>
                 <div class="table-responsive">
                     <table class="table">
@@ -179,6 +197,7 @@ $repairs = $conn->query("
                                 <th>Transaction ID</th>
                                 <th>Client</th>
                                 <th>Item</th>
+                                <th>Quantity</th>
                                 <th>Date Paid</th>
                                 <th>Cost</th>
                                 <th>Status</th>
@@ -189,10 +208,15 @@ $repairs = $conn->query("
                             <tr>
                                 <td><?= htmlspecialchars($row['repair_fee_id']) ?></td>
                                 <td><?= htmlspecialchars($row['transaction_id']) ?></td>
-                                <td><?= htmlspecialchars($row['client_name'] ?? 'N/A') ?></td>
-                                <td><?= htmlspecialchars($row['item_name'] ?? 'N/A') ?></td>
+                                <td><?= htmlspecialchars($row['client_name']) ?></td>
+                                <td><?= htmlspecialchars($row['item_name']) ?></td>
+                                <td>
+                                    <span class="quantity-badge">
+                                        <i class="fas fa-box"></i> <?= $row['quantity'] ?? 1 ?> unit(s)
+                                    </span>
+                                </td>
                                 <td><?= $row['date_paid'] ?></td>
-                                <td>₱<?= number_format($row['cost'], 2) ?></td>
+                                <td>₱<?= number_format(($row['quantity'] ?? 1) * $row['cost'], 2) ?></td>
                                 <td>
                                     <?php if($row['status'] == 'Paid'): ?>
                                         <span class="badge-paid"><i class="fas fa-check-circle"></i> Paid</span>

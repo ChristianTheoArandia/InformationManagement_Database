@@ -8,6 +8,18 @@ $days_to_show = isset($_GET['days']) ? (int)$_GET['days'] : 7;
 // Calculate end date
 $end_date = date('Y-m-d', strtotime($start_date . ' + ' . ($days_to_show - 1) . ' days'));
 
+// Get damaged items count (SUM of quantities, not COUNT of reports)
+$damaged_query = $conn->query("
+    SELECT item_id, SUM(quantity) as damaged_count 
+    FROM Repair_Fee 
+    WHERE status != 'Completed' AND status != 'Paid'
+    GROUP BY item_id
+");
+$damaged_items = [];
+while ($d = $damaged_query->fetch_assoc()) {
+    $damaged_items[$d['item_id']] = $d['damaged_count'];
+}
+
 // Get all items
 $all_items = $conn->query("SELECT * FROM Rental_Item ORDER BY item_type_id, item_id");
 
@@ -50,10 +62,13 @@ foreach ($items as $item) {
         $rented_data = $rented_result->fetch_assoc();
         $rented_count = $rented_data['rented_count'];
         
-        $available_stock = $item['total_stock'] - $rented_count;
+        // Subtract rented AND damaged items from total stock
+        $damaged_count = $damaged_items[$item_id] ?? 0;
+        $available_stock = $item['total_stock'] - $rented_count - $damaged_count;
         
         $availability_matrix[$item_id]['availability'][$date] = [
             'rented' => $rented_count,
+            'damaged' => $damaged_count,
             'available' => max(0, $available_stock),
             'status' => $available_stock <= 0 ? 'out' : ($available_stock < 5 ? 'low' : 'available')
         ];
@@ -98,9 +113,8 @@ $tables = array_filter($items, function($item) {
         .availability-card {
             background: white;
             border-radius: 20px;
-            padding: 30px;
+            padding: 25px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-            overflow-x: auto;
         }
         
         .header-section {
@@ -125,10 +139,10 @@ $tables = array_filter($items, function($item) {
         }
         
         .control-panel {
-            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            background: #f8f9fa;
             border-radius: 16px;
             padding: 20px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
         
         .control-form {
@@ -189,6 +203,7 @@ $tables = array_filter($items, function($item) {
             border-collapse: collapse;
             font-size: 13px;
             min-width: 800px;
+            margin-bottom: 20px;
         }
         
         .availability-calendar th {
@@ -198,9 +213,6 @@ $tables = array_filter($items, function($item) {
             font-weight: 600;
             font-size: 12px;
             border: 1px solid #e5e7eb;
-            position: sticky;
-            top: 0;
-            z-index: 10;
         }
         
         .availability-calendar td {
@@ -214,6 +226,7 @@ $tables = array_filter($items, function($item) {
             font-weight: 600;
             text-align: left;
             background: white;
+            width: 180px;
         }
         
         .availability-badge {
@@ -222,7 +235,7 @@ $tables = array_filter($items, function($item) {
             border-radius: 8px;
             font-weight: 600;
             font-size: 12px;
-            min-width: 60px;
+            min-width: 65px;
         }
         
         .status-available {
@@ -246,10 +259,16 @@ $tables = array_filter($items, function($item) {
             margin-top: 3px;
         }
         
+        .damaged-count {
+            font-size: 10px;
+            color: #dc2626;
+            margin-top: 3px;
+        }
+        
         .stock-info {
             font-size: 11px;
             color: #9ca3af;
-            margin-top: 3px;
+            margin-top: 5px;
         }
         
         .legend {
@@ -300,11 +319,8 @@ $tables = array_filter($items, function($item) {
             color: #9ca3af;
         }
         
-        @media (max-width: 768px) {
-            .main-content {
-                margin-left: 0;
-                padding: 15px;
-            }
+        .table-responsive {
+            overflow-x: auto;
         }
     </style>
 </head>
@@ -322,11 +338,11 @@ $tables = array_filter($items, function($item) {
             <div class="control-panel">
                 <form method="GET" action="" class="control-form">
                     <div class="form-group">
-                        <label><i class="fas fa-calendar-day"></i> Start Date</label>
+                        <label>Start Date</label>
                         <input type="date" name="start_date" value="<?= $start_date ?>">
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-clock"></i> Date Range</label>
+                        <label>Date Range</label>
                         <select name="days">
                             <option value="1" <?= $days_to_show == 1 ? 'selected' : '' ?>>1 Day</option>
                             <option value="3" <?= $days_to_show == 3 ? 'selected' : '' ?>>3 Days</option>
@@ -355,6 +371,10 @@ $tables = array_filter($items, function($item) {
                     <div class="legend-color" style="background: #fee2e2;"></div>
                     <span>Out of Stock (0 units)</span>
                 </div>
+                <div class="legend-item">
+                    <i class="fas fa-tools" style="color: #dc2626;"></i>
+                    <span>Units in Repair</span>
+                </div>
             </div>
             
             <!-- CHAIRS SECTION -->
@@ -362,29 +382,30 @@ $tables = array_filter($items, function($item) {
                 <h4 class="section-title">
                     <i class="fas fa-chair"></i> Chairs Availability
                 </h4>
-                <?php if(!empty($chairs)): ?>
+                <div class="table-responsive">
                     <table class="availability-calendar">
                         <thead>
                             <tr>
-                                <th style="width: 180px;">Item Name</th>
+                                <th>Item Name</th>
                                 <?php foreach($dates as $date): ?>
-                                    <th>
-                                        <?= date('D, M j', strtotime($date)) ?>
-                                        <div style="font-size: 10px; font-weight: normal;">
-                                            <?= date('Y-m-d', strtotime($date)) ?>
-                                        </div>
-                                    </th>
+                                    <th><?= date('D, M j', strtotime($date)) ?></th>
                                 <?php endforeach; ?>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach($chairs as $item): ?>
+                                <?php 
+                                    $item_damaged = $damaged_items[$item['item_id']] ?? 0;
+                                ?>
                                 <tr>
                                     <td class="item-name-cell">
                                         <strong><?= htmlspecialchars($item['item_name']) ?></strong>
                                         <div class="stock-info">
-                                            Total: <?= $item['total_stock'] ?> units<br>
-                                            ₱<?= number_format($item['individual_cost'], 2) ?>/day
+                                            Total: <?= $item['total_stock'] ?> units
+                                            <?php if($item_damaged > 0): ?>
+                                                <br><span style="color: #dc2626;"><i class="fas fa-tools"></i> <?= $item_damaged ?> in repair</span>
+                                            <?php endif; ?>
+                                            <br>₱<?= number_format($item['individual_cost'], 2) ?>/day
                                         </div>
                                     </td>
                                     <?php foreach($dates as $date): 
@@ -399,45 +420,49 @@ $tables = array_filter($items, function($item) {
                                                     <i class="fas fa-calendar-check"></i> <?= $avail['rented'] ?> rented
                                                 </div>
                                             <?php endif; ?>
+                                            <?php if($avail['damaged'] > 0): ?>
+                                                <div class="damaged-count">
+                                                    <i class="fas fa-tools"></i> <?= $avail['damaged'] ?> in repair
+                                                </div>
+                                            <?php endif; ?>
                                         </td>
                                     <?php endforeach; ?>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
-                <?php else: ?>
-                    <div class="empty-state">No chairs found</div>
-                <?php endif; ?>
+                </div>
             </div>
             
             <!-- TABLES SECTION -->
-            <div style="margin-top: 40px;">
+            <div style="margin-top: 30px;">
                 <h4 class="section-title">
                     <i class="fas fa-table"></i> Tables Availability
                 </h4>
-                <?php if(!empty($tables)): ?>
+                <div class="table-responsive">
                     <table class="availability-calendar">
                         <thead>
                             <tr>
-                                <th style="width: 180px;">Item Name</th>
+                                <th>Item Name</th>
                                 <?php foreach($dates as $date): ?>
-                                    <th>
-                                        <?= date('D, M j', strtotime($date)) ?>
-                                        <div style="font-size: 10px; font-weight: normal;">
-                                            <?= date('Y-m-d', strtotime($date)) ?>
-                                        </div>
-                                    </th>
+                                    <th><?= date('D, M j', strtotime($date)) ?></th>
                                 <?php endforeach; ?>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach($tables as $item): ?>
+                                <?php 
+                                    $item_damaged = $damaged_items[$item['item_id']] ?? 0;
+                                ?>
                                 <tr>
                                     <td class="item-name-cell">
                                         <strong><?= htmlspecialchars($item['item_name']) ?></strong>
                                         <div class="stock-info">
-                                            Total: <?= $item['total_stock'] ?> units<br>
-                                            ₱<?= number_format($item['individual_cost'], 2) ?>/day
+                                            Total: <?= $item['total_stock'] ?> units
+                                            <?php if($item_damaged > 0): ?>
+                                                <br><span style="color: #dc2626;"><i class="fas fa-tools"></i> <?= $item_damaged ?> in repair</span>
+                                            <?php endif; ?>
+                                            <br>₱<?= number_format($item['individual_cost'], 2) ?>/day
                                         </div>
                                     </td>
                                     <?php foreach($dates as $date): 
@@ -452,18 +477,21 @@ $tables = array_filter($items, function($item) {
                                                     <i class="fas fa-calendar-check"></i> <?= $avail['rented'] ?> rented
                                                 </div>
                                             <?php endif; ?>
+                                            <?php if($avail['damaged'] > 0): ?>
+                                                <div class="damaged-count">
+                                                    <i class="fas fa-tools"></i> <?= $avail['damaged'] ?> in repair
+                                                </div>
+                                            <?php endif; ?>
                                         </td>
                                     <?php endforeach; ?>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
-                <?php else: ?>
-                    <div class="empty-state">No tables found</div>
-                <?php endif; ?>
+                </div>
             </div>
             
-            <div style="margin-top: 30px;">
+            <div>
                 <a href="../index.php" class="btn-back">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>

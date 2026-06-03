@@ -132,9 +132,7 @@ $tables = [
         cost INTEGER,
         FOREIGN KEY (transaction_id) REFERENCES TransactionTbl(transaction_id),
         FOREIGN KEY (item_id) REFERENCES Rental_Item(item_id)
-    )",
-    "ALTER TABLE TransactionTbl
-ADD COLUMN venue CHAR(30)"
+    )"
 ];
 
 foreach ($tables as $table) {
@@ -143,6 +141,38 @@ foreach ($tables as $table) {
     } else {
         echo "<p style='color:orange'>Table may already exist: " . $conn->error . "</p>";
     }
+}
+
+// =============================================
+// AUTO-FIX MISSING COLUMNS
+// =============================================
+echo "<h3>Checking for missing columns...</h3>";
+
+// Add quantity column to Repair_Fee
+$check_column = $conn->query("SHOW COLUMNS FROM Repair_Fee LIKE 'quantity'");
+if ($check_column->num_rows == 0) {
+    $conn->query("ALTER TABLE Repair_Fee ADD COLUMN quantity INT DEFAULT 1");
+    echo "<p style='color:green'>Added 'quantity' column to Repair_Fee table</p>";
+} else {
+    echo "<p style='color:green'>'quantity' column already exists in Repair_Fee</p>";
+}
+
+// Add venue column to TransactionTbl
+$check_column = $conn->query("SHOW COLUMNS FROM TransactionTbl LIKE 'venue'");
+if ($check_column->num_rows == 0) {
+    $conn->query("ALTER TABLE TransactionTbl ADD COLUMN venue VARCHAR(100)");
+    echo "<p style='color:green'>Added 'venue' column to TransactionTbl table</p>";
+} else {
+    echo "<p style='color:green'>'venue' column already exists in TransactionTbl</p>";
+}
+
+// Add payment_status column to TransactionTbl
+$check_column = $conn->query("SHOW COLUMNS FROM TransactionTbl LIKE 'payment_status'");
+if ($check_column->num_rows == 0) {
+    $conn->query("ALTER TABLE TransactionTbl ADD COLUMN payment_status ENUM('PAID', 'NOT PAID') DEFAULT 'NOT PAID'");
+    echo "<p style='color:green'>Added 'payment_status' column to TransactionTbl table</p>";
+} else {
+    echo "<p style='color:green'>'payment_status' column already exists in TransactionTbl</p>";
 }
 
 // Test 5: Insert default data
@@ -183,6 +213,13 @@ $conn->query("INSERT IGNORE INTO Employee VALUES
     ('E00001', 'James', 'Musa', 500),
     ('E00002', 'Maria', 'Santos', 550)");
 echo "<p style='color:green'>Sample employees added</p>";
+
+// Insert sample items
+$conn->query("INSERT IGNORE INTO Rental_Item VALUES 
+    ('I00001', 'Red Chair', '001', 100, 50),
+    ('I00002', 'Monobloc', '001', 100, 25),
+    ('I00003', 'Wooden Chair', '001', 100, 25)");
+echo "<p style='color:green'>Sample items added</p>";
 
 // Test 6: Display tables
 echo "<h3>Tables in database:</h3>";

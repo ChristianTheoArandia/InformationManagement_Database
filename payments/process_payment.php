@@ -10,7 +10,7 @@ if (!$transaction_id) {
     exit();
 }
 
-// Get transaction details
+// Get transaction details with total amount
 $transaction = $conn->query("
     SELECT t.*, SUM(ti.quantity * ri.individual_cost) as total_amount
     FROM TransactionTbl t
@@ -20,16 +20,17 @@ $transaction = $conn->query("
     GROUP BY t.transaction_id
 ")->fetch_assoc();
 
+$totalAmount = $transaction['total_amount'] ?? 0;
+
 // Get payment types (only Cash and Digital Wallet)
 $paymentTypes = $conn->query("SELECT * FROM Payment_Type WHERE payment_type_id IN ('001', '003')");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payment_id = generateId('P', 'Payment', 'payment_id');
     $payment_type_id = $_POST['payment_type_id'];
-    $amount = $_POST['amount'];
+    $amount = $totalAmount;
     $error = false;
     
-    // Validation for Digital Wallet
     if ($payment_type_id == '003') {
         $wallet_type_id = $_POST['wallet_type_id'];
         $account_number = $_POST['account_number'];
@@ -68,10 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conn->query("INSERT INTO Wallet (payment_id, wallet_type_id, account_number, transaction_reference_no) VALUES ('$payment_id', '$wallet_type_id', '$account_number', '$reference_no')");
             }
             
-            // Update payment status
             $conn->query("UPDATE TransactionTbl SET payment_status = 'PAID' WHERE transaction_id = '$transaction_id'");
-            
-            // Redirect to transaction list with success message
             header("Location: ../transactions/list.php?success=Payment recorded successfully");
             exit();
         } else {
@@ -127,17 +125,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
             border: none;
-            padding: 12px 30px;
+            padding: 12px 1px;
             border-radius: 12px;
             font-weight: 600;
             width: 100%;
+            margin-top: 10px;
         }
         .btn-payment:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(16,185,129,0.3); }
         .btn-back {
             background: #6b7280;
             color: white;
             border: none;
-            padding: 12px 30px;
+            padding: 12px 1px;
             border-radius: 12px;
             font-weight: 600;
             text-decoration: none;
@@ -152,10 +151,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 12px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
         .total-amount { font-size: 24px; font-weight: 700; color: #10b981; }
-        .button-group { display: flex; flex-direction: column; gap: 10px; }
+        .button-group { display: flex; flex-direction: column; gap: 10px; margin-top: 25px; }
+        .mt-2 { margin-top: 5px; }
+        .mb-2 { margin-bottom: 5px; }
+        .mb-3-custom { margin-bottom: 20px; }
+        .mt-4-custom { margin-top: 25px; }
     </style>
 </head>
 <body>
@@ -174,12 +177,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="d-flex justify-content-between">
                     <strong>Total Amount Due:</strong>
-                    <span class="total-amount">₱<?= number_format($transaction['total_amount'] ?? 0, 2) ?></span>
+                    <span class="total-amount">₱<?= number_format($totalAmount, 2) ?></span>
                 </div>
             </div>
             
             <form method="POST" id="paymentForm">
-                <div class="mb-3">
+                <div class="mb-3-custom">
                     <label class="form-label">PAYMENT METHOD</label>
                     <select name="payment_type_id" id="paymentType" class="form-select" required>
                         <option value="">Select Payment Method</option>
@@ -189,35 +192,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </select>
                 </div>
                 
-                <div class="mb-3">
-                    <label class="form-label">AMOUNT (₱)</label>
-                    <input type="number" name="amount" class="form-control" value="<?= $transaction['total_amount'] ?? 0 ?>" step="0.01" required>
-                </div>
-                
+                <!-- Cash Fields -->
                 <div id="cashFields" style="display:none;">
-                    <div class="mb-3">
+                    <div class="mb-3-custom">
                         <label class="form-label">AMOUNT RECEIVED</label>
-                        <input type="number" name="amount_received" class="form-control" step="0.01">
+                        <input type="number" name="amount_received" class="form-control" step="0.01" required>
                     </div>
                 </div>
                 
+                <!-- Digital Wallet Fields -->
                 <div id="walletFields" style="display:none;">
-                    <div class="mb-3">
+                    <div class="mb-3-custom">
                         <label class="form-label">WALLET TYPE</label>
-                        <select name="wallet_type_id" id="walletType" class="form-select">
+                        <select name="wallet_type_id" id="walletType" class="form-select" required>
                             <option value="">Select Wallet</option>
                             <option value="001">GCash</option>
                             <option value="002">PayMaya</option>
                         </select>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3-custom">
                         <label class="form-label">ACCOUNT NUMBER</label>
-                        <input type="text" name="account_number" id="accountNumber" class="form-control" placeholder="Enter 11-digit account number" maxlength="11">
+                        <input type="text" name="account_number" id="accountNumber" class="form-control" placeholder="Enter 11-digit account number" maxlength="11" required>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3-custom">
                         <label class="form-label">REFERENCE NUMBER</label>
-                        <input type="text" name="reference_no" id="referenceNo" class="form-control" placeholder="Enter reference number">
-                        <small class="text-muted" id="refHint">GCash: 13 digits | PayMaya: 12 digits</small>
+                        <input type="text" name="reference_no" id="referenceNo" class="form-control" placeholder="Enter reference number" required>
                     </div>
                 </div>
                 
@@ -291,6 +290,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if (walletType === '002' && !/^\d{12}$/.test(referenceNo)) {
                     alert('PayMaya reference number must be exactly 12 digits!');
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            if (paymentType === '001') {
+                const amountReceived = document.querySelector('input[name="amount_received"]').value;
+                const totalAmount = <?= $totalAmount ?>;
+                
+                if (!amountReceived || amountReceived < totalAmount) {
+                    alert('Amount received must be at least ₱' + totalAmount.toFixed(2));
                     e.preventDefault();
                     return false;
                 }
