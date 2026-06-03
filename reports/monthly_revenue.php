@@ -3,6 +3,12 @@ require_once '../includes/database.php';
 
 $year = $_GET['year'] ?? date('Y');
 
+// Only allow years from 2026 to current year
+$currentYear = date('Y');
+if ($year < 2026) {
+    $year = 2026;
+}
+
 // Get ALL payments (both rental and repair)
 $payments = $conn->query("
     SELECT 
@@ -142,7 +148,7 @@ while($row = $payments->fetch_assoc()) {
                 <h3><i class="fas fa-chart-line"></i> Monthly Revenue Report</h3>
                 <form method="GET" class="year-selector">
                     <select name="year">
-                        <?php for($y = 2024; $y <= date('Y'); $y++): ?>
+                        <?php for($y = 2026; $y <= $currentYear; $y++): ?>
                             <option value="<?= $y ?>" <?= $y == $year ? 'selected' : '' ?>><?= $y ?></option>
                         <?php endfor; ?>
                     </select>

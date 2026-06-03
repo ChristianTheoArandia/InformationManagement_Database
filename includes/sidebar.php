@@ -15,12 +15,6 @@ $current_folder = basename(dirname($_SERVER['PHP_SELF']));
                 <span>Dashboard</span>
             </a>
         </li>
-        <li class="<?= $current_folder == 'transactions' ? 'active' : '' ?>">
-            <a href="/InformationManagement_Database/transactions/list.php">
-                <i class="fas fa-shopping-cart"></i>
-                <span>Transactions</span>
-            </a>
-        </li>
         <li class="<?= $current_folder == 'clients' ? 'active' : '' ?>">
             <a href="/InformationManagement_Database/clients/list.php">
                 <i class="fas fa-users"></i>
@@ -43,6 +37,12 @@ $current_folder = basename(dirname($_SERVER['PHP_SELF']));
             <a href="/InformationManagement_Database/items/availability.php">
                 <i class="fas fa-boxes"></i>
                 <span>Availability Calendar</span>
+            </a>
+        </li>
+        <li class="<?= $current_folder == 'transactions' ? 'active' : '' ?>">
+            <a href="/InformationManagement_Database/transactions/list.php">
+                <i class="fas fa-shopping-cart"></i>
+                <span>Transactions</span>
             </a>
         </li>
         <li class="<?= $current_folder == 'repairs' ? 'active' : '' ?>">
