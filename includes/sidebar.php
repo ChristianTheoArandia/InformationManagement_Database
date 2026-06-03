@@ -35,7 +35,7 @@ $current_folder = basename(dirname($_SERVER['PHP_SELF']));
         </li>
         <li class="<?= $current_page == 'availability.php' ? 'active' : '' ?>">
             <a href="/InformationManagement_Database/items/availability.php">
-                <i class="fas fa-boxes"></i>
+                <i class="fas fa-calendar"></i>
                 <span>Availability Calendar</span>
             </a>
         </li>
