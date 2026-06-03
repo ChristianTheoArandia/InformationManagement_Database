@@ -214,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['report_damage'])) {
                 </tr>
                 <?php endwhile; ?>
                 <tr class="table-dark">
-                    <td colspan="4"><strong>Grand Total</strong></td>
+                    <td colspan="4"><strong>Total</strong></td>
                     <td colspan="2"><strong class="total-amount">₱<?= number_format($total, 2) ?></strong></td>
                 </tr>
             </tbody>

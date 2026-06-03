@@ -28,7 +28,7 @@ if (!$repair) {
 $quantity = $repair['quantity'] ?? 1;
 $totalAmount = $quantity * $repair['cost'];
 
-// Get payment types (only Cash and Digital Wallet)
+// Get payment types
 $paymentTypes = $conn->query("SELECT * FROM Payment_Type WHERE payment_type_id IN ('001', '003')");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
@@ -37,7 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
     $amount = $totalAmount;
     $error = false;
     
-    // Validation for Digital Wallet
     if ($payment_type_id == '003') {
         $wallet_type_id = $_POST['wallet_type_id'];
         $account_number = $_POST['account_number'];
@@ -102,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pay Repair Fee - Table & Chair Rental</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -163,6 +162,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
         }
         .btn-back:hover { background: #4b5563; color: white; }
         .alert { border-radius: 12px; margin-bottom: 20px; }
+        .alert-danger { background: #fee2e2; color: #991b1b; }
+        .alert-success { background: #d1fae5; color: #065f46; }
         .info-box {
             background: #f8f9fa;
             padding: 15px;
@@ -172,6 +173,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
         .total-amount { font-size: 24px; font-weight: 700; color: #10b981; }
         .button-group { display: flex; flex-direction: column; gap: 10px; margin-top: 25px; }
         .mb-3-custom { margin-bottom: 20px; }
+        .duration-badge {
+            background: #eef2ff;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #667eea;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .calculation-detail {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #e5e7eb;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #555;
+        }
+        .info-value {
+            color: #333;
+        }
+        .error-border {
+            border-color: #ef4444 !important;
+        }
+        .error-message {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -180,33 +227,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
             <h3><i class="fas fa-tools"></i> Pay Repair Fee</h3>
             
             <?php if($message): ?>
-                <div class="alert alert-<?= $messageType ?>"><?= $message ?></div>
+                <div class="alert alert-<?= $messageType ?> alert-dismissible fade show" role="alert">
+                    <?= $message ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
             <?php endif; ?>
             
             <div class="info-box">
-                <div class="d-flex justify-content-between mb-2">
-                    <strong>Repair ID:</strong>
-                    <span><?= htmlspecialchars($repair_id) ?></span>
+                <div class="info-row">
+                    <span class="info-label">Repair ID:</span>
+                    <span class="info-value"><?= htmlspecialchars($repair_id) ?></span>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <strong>Client:</strong>
-                    <span><?= htmlspecialchars($repair['client_name']) ?></span>
+                <div class="info-row">
+                    <span class="info-label">Client:</span>
+                    <span class="info-value"><?= htmlspecialchars($repair['client_name']) ?></span>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <strong>Item:</strong>
-                    <span><?= htmlspecialchars($repair['item_name']) ?></span>
+                <div class="info-row">
+                    <span class="info-label">Item:</span>
+                    <span class="info-value"><?= htmlspecialchars($repair['item_name']) ?></span>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <strong>Quantity:</strong>
-                    <span><?= $quantity ?> unit(s)</span>
+                <div class="info-row">
+                    <span class="info-label">Quantity:</span>
+                    <span class="info-value"><?= $quantity ?> unit(s)</span>
                 </div>
-                <div class="d-flex justify-content-between">
-                    <strong>Amount Due:</strong>
+                <div class="info-row mt-2">
+                    <span class="info-label"><strong>Amount Due:</strong></span>
                     <span class="total-amount">₱<?= number_format($totalAmount, 2) ?></span>
+                </div>
+                <div class="calculation-detail">
+                    <i class="fas fa-calculator"></i> Calculated as: <?= $quantity ?> unit(s) × ₱<?= number_format($repair['cost'], 2) ?> = ₱<?= number_format($totalAmount, 2) ?>
                 </div>
             </div>
             
-            <form method="POST" id="paymentForm">
+            <form method="POST" id="paymentForm" novalidate>
+                <input type="hidden" name="submit_payment" value="1">
+                
                 <div class="mb-3-custom">
                     <label class="form-label">PAYMENT METHOD</label>
                     <select name="payment_type_id" id="paymentType" class="form-select" required>
@@ -221,8 +276,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
                 <div id="cashFields" style="display:none;">
                     <div class="mb-3-custom">
                         <label class="form-label">AMOUNT RECEIVED</label>
-                        <input type="number" name="amount_received" id="amountReceived" class="form-control" step="0.01" required>
+                        <input type="number" name="amount_received" id="amountReceived" class="form-control" step="0.01">
                         <small class="text-muted">Enter amount received from customer</small>
+                        <div id="changeDisplay" style="margin-top: 8px; font-size: 13px; font-weight: 500;"></div>
+                        <span class="error-message" id="amountReceivedError"></span>
                     </div>
                 </div>
                 
@@ -230,27 +287,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
                 <div id="walletFields" style="display:none;">
                     <div class="mb-3-custom">
                         <label class="form-label">WALLET TYPE</label>
-                        <select name="wallet_type_id" id="walletType" class="form-select" required>
+                        <select name="wallet_type_id" id="walletType" class="form-select">
                             <option value="">Select Wallet</option>
                             <option value="001">GCash</option>
                             <option value="002">PayMaya</option>
                         </select>
+                        <span class="error-message" id="walletTypeError"></span>
                     </div>
                     <div class="mb-3-custom">
                         <label class="form-label">ACCOUNT NUMBER</label>
-                        <input type="text" name="account_number" id="accountNumber" class="form-control" placeholder="Enter 11-digit account number" maxlength="11" required>
+                        <input type="text" name="account_number" id="accountNumber" class="form-control" placeholder="Enter 11-digit account number" maxlength="11">
                         <small class="text-muted">Must be exactly 11 digits</small>
+                        <span class="error-message" id="accountNumberError"></span>
                     </div>
                     <div class="mb-3-custom">
                         <label class="form-label">REFERENCE NUMBER</label>
-                        <input type="text" name="reference_no" id="referenceNo" class="form-control" placeholder="Enter reference number" required>
+                        <input type="text" name="reference_no" id="referenceNo" class="form-control" placeholder="Enter reference number">
                         <small class="text-muted" id="refHint">GCash: 13 digits | PayMaya: 12 digits</small>
+                        <span class="error-message" id="referenceNoError"></span>
                     </div>
                 </div>
                 
                 <div class="button-group">
-                    <button type="submit" name="submit_payment" class="btn-payment">
-                        <i class="fas fa-check-circle"></i> Record Payment
+                    <button type="button" onclick="validateAndSubmit()" class="btn-payment">
+                        <i class="fas fa-check-circle"></i> Record Payment (₱<?= number_format($totalAmount, 2) ?>)
                     </button>
                     <a href="list.php" class="btn-back">
                         <i class="fas fa-arrow-left"></i> Back to Repairs
@@ -260,21 +320,133 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
         </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const totalAmount = <?= $totalAmount ?>;
+        
+        function validateAndSubmit() {
+            // Clear all previous errors
+            clearErrors();
+            
+            let isValid = true;
+            const paymentType = document.getElementById('paymentType').value;
+            
+            if (!paymentType) {
+                showError('paymentType', 'Please select a payment method');
+                isValid = false;
+            }
+            
+            if (paymentType === '001') {
+                const amountReceived = document.getElementById('amountReceived').value;
+                
+                if (!amountReceived || parseFloat(amountReceived) < totalAmount) {
+                    showError('amountReceived', `Amount received must be at least ₱${totalAmount.toFixed(2)}`);
+                    isValid = false;
+                }
+            } 
+            else if (paymentType === '003') {
+                const walletType = document.getElementById('walletType').value;
+                
+                if (!walletType) {
+                    showError('walletType', 'Please select a wallet type');
+                    isValid = false;
+                }
+                
+                const accountNumber = document.getElementById('accountNumber').value;
+                if (!accountNumber || !/^\d{11}$/.test(accountNumber)) {
+                    showError('accountNumber', 'Account number must be exactly 11 digits');
+                    isValid = false;
+                }
+                
+                const referenceNo = document.getElementById('referenceNo').value;
+                if (walletType === '001') {
+                    if (!referenceNo || !/^\d{13}$/.test(referenceNo)) {
+                        showError('referenceNo', 'GCash reference number must be exactly 13 digits');
+                        isValid = false;
+                    }
+                } else if (walletType === '002') {
+                    if (!referenceNo || !/^\d{12}$/.test(referenceNo)) {
+                        showError('referenceNo', 'PayMaya reference number must be exactly 12 digits');
+                        isValid = false;
+                    }
+                }
+            }
+            
+            if (isValid) {
+                document.getElementById('paymentForm').submit();
+            } else {
+                const firstError = document.querySelector('.error-border');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+        
+        function showError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.classList.add('error-border');
+                const errorSpan = document.getElementById(fieldId + 'Error');
+                if (errorSpan) {
+                    errorSpan.textContent = message;
+                }
+            }
+        }
+        
+        function clearErrors() {
+            const errorFields = document.querySelectorAll('.error-border');
+            errorFields.forEach(field => {
+                field.classList.remove('error-border');
+            });
+            const errorMessages = document.querySelectorAll('.error-message');
+            errorMessages.forEach(msg => {
+                msg.textContent = '';
+            });
+        }
+        
         document.getElementById('paymentType').addEventListener('change', function() {
             document.getElementById('cashFields').style.display = 'none';
             document.getElementById('walletFields').style.display = 'none';
+            clearErrors();
             
             if(this.value === '001') {
                 document.getElementById('cashFields').style.display = 'block';
+                document.getElementById('amountReceived').required = true;
             } else if(this.value === '003') {
                 document.getElementById('walletFields').style.display = 'block';
             }
         });
         
+        const amountReceivedInput = document.getElementById('amountReceived');
+        if (amountReceivedInput) {
+            amountReceivedInput.addEventListener('input', function() {
+                const amountReceived = parseFloat(this.value);
+                const changeDisplay = document.getElementById('changeDisplay');
+                const errorSpan = document.getElementById('amountReceivedError');
+                
+                if (!isNaN(amountReceived) && amountReceived >= totalAmount) {
+                    const change = amountReceived - totalAmount;
+                    changeDisplay.innerHTML = `<i class="fas fa-calculator"></i> Change: ₱${change.toFixed(2)}`;
+                    changeDisplay.style.color = '#10b981';
+                    if (errorSpan) errorSpan.textContent = '';
+                    this.classList.remove('error-border');
+                } else if (!isNaN(amountReceived) && amountReceived < totalAmount) {
+                    const remaining = totalAmount - amountReceived;
+                    changeDisplay.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Remaining: ₱${remaining.toFixed(2)}`;
+                    changeDisplay.style.color = '#ef4444';
+                } else {
+                    changeDisplay.innerHTML = '';
+                }
+            });
+        }
+        
         document.getElementById('walletType')?.addEventListener('change', function() {
             const refHint = document.getElementById('refHint');
             const refInput = document.getElementById('referenceNo');
+            const errorSpan = document.getElementById('referenceNoError');
+            
+            if (errorSpan) errorSpan.textContent = '';
+            if (refInput) refInput.classList.remove('error-border');
             
             if (this.value === '001') {
                 refHint.innerHTML = 'GCash: Must be exactly 13 digits';
@@ -291,54 +463,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
             }
         });
         
-        document.getElementById('paymentForm').addEventListener('submit', function(e) {
-            const paymentType = document.getElementById('paymentType').value;
-            
-            if (!paymentType) {
-                alert('Please select a payment method');
-                e.preventDefault();
-                return false;
-            }
-            
-            if (paymentType === '003') {
-                const accountNumber = document.getElementById('accountNumber').value;
-                const referenceNo = document.getElementById('referenceNo').value;
-                const walletType = document.getElementById('walletType').value;
+        const accountNumberInput = document.getElementById('accountNumber');
+        if (accountNumberInput) {
+            accountNumberInput.addEventListener('input', function() {
+                this.value = this.value.replace(/\D/g, '').slice(0, 11);
+                const errorSpan = document.getElementById('accountNumberError');
+                if (errorSpan && this.value.length === 11) {
+                    errorSpan.textContent = '';
+                    this.classList.remove('error-border');
+                }
+            });
+        }
+        
+        const referenceNoInput = document.getElementById('referenceNo');
+        if (referenceNoInput) {
+            referenceNoInput.addEventListener('input', function() {
+                const walletType = document.getElementById('walletType')?.value;
+                const errorSpan = document.getElementById('referenceNoError');
                 
-                if (!walletType) {
-                    alert('Please select a wallet type');
-                    e.preventDefault();
-                    return false;
+                if (walletType === '001') {
+                    this.value = this.value.replace(/\D/g, '').slice(0, 13);
+                    if (errorSpan && this.value.length === 13) {
+                        errorSpan.textContent = '';
+                        this.classList.remove('error-border');
+                    }
+                } else if (walletType === '002') {
+                    this.value = this.value.replace(/\D/g, '').slice(0, 12);
+                    if (errorSpan && this.value.length === 12) {
+                        errorSpan.textContent = '';
+                        this.classList.remove('error-border');
+                    }
                 }
-                
-                if (!/^\d{11}$/.test(accountNumber)) {
-                    alert('Account number must be exactly 11 digits!');
-                    e.preventDefault();
-                    return false;
-                }
-                
-                if (walletType === '001' && !/^\d{13}$/.test(referenceNo)) {
-                    alert('GCash reference number must be exactly 13 digits!');
-                    e.preventDefault();
-                    return false;
-                }
-                if (walletType === '002' && !/^\d{12}$/.test(referenceNo)) {
-                    alert('PayMaya reference number must be exactly 12 digits!');
-                    e.preventDefault();
-                    return false;
-                }
-            }
-            
-            if (paymentType === '001') {
-                const amountReceived = document.getElementById('amountReceived').value;
-                const totalAmount = <?= $totalAmount ?>;
-                
-                if (!amountReceived || amountReceived < totalAmount) {
-                    alert('Amount received must be at least ₱' + totalAmount.toFixed(2));
-                    e.preventDefault();
-                    return false;
-                }
-            }
+            });
+        }
+        
+        const inputs = document.querySelectorAll('.form-control, .form-select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                this.classList.remove('error-border');
+                const errorSpan = document.getElementById(this.id + 'Error');
+                if (errorSpan) errorSpan.textContent = '';
+            });
         });
     </script>
 </body>
