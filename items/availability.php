@@ -70,7 +70,7 @@ foreach ($items as $item) {
             'rented' => $rented_count,
             'damaged' => $damaged_count,
             'available' => max(0, $available_stock),
-            'status' => $available_stock <= 0 ? 'out' : ($available_stock < 5 ? 'low' : 'available')
+            'status' => $available_stock <= 0 ? 'out' : ($available_stock < 20 ? 'low' : 'available')
         ];
     }
 }
@@ -365,7 +365,7 @@ $tables = array_filter($items, function($item) {
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" style="background: #fed7aa;"></div>
-                    <span>Low Stock (<5 units)</span>
+                    <span>Low Stock (<20 units)</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" style="background: #fee2e2;"></div>

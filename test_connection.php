@@ -103,7 +103,7 @@ $tables = [
         FOREIGN KEY (client_id) REFERENCES Client(client_id),
         FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
     )",
-    "ALTER TABLE TransactionTbl ADD COLUMN rental_duration VARCHAR(255)",
+
     
     "CREATE TABLE IF NOT EXISTS Payment (
         payment_id CHAR(6) PRIMARY KEY,
