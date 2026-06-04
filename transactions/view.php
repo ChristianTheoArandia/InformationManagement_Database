@@ -252,9 +252,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['report_damage'])) {
                 <small class="text-muted">How many units were damaged?</small>
             </div>
             <div style="margin-bottom: 15px;">
-                <label style="display: block; font-weight: 500; margin-bottom: 5px;">Total Repair Cost (₱)</label>
+                <label style="display: block; font-weight: 500; margin-bottom: 5px;">Repair Cost Per Item (₱)</label>
                 <input type="number" name="repair_cost" id="repairCost" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;" step="0.01" required>
-                <small class="text-muted">Total cost for all damaged units</small>
+                <small class="text-muted">Total Repair Cost: Quantity x Repair Cost Per Item</small>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button type="button" onclick="closeDamageModal()" style="background: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;">Cancel</button>
